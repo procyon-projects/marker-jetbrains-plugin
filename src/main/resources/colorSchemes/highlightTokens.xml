@@ -1,0 +1,37 @@
+<?xml version='1.0'?>
+<list>
+    <option name="+_COMMENT">
+        <value>
+            <option name="FOREGROUND" value="AFBF7E"/>
+            <option name="FONT_TYPE" value="3" />
+        </value>
+    </option>
+    <option name=":_COMMENT">
+        <value>
+            <option name="FOREGROUND" value="c6ccb2"/>
+            <option name="FONT_TYPE" value="3" />
+        </value>
+    </option>
+    <option name="MARKER_COMMENT">
+        <value>
+            <option name="FONT_TYPE" value="3" />
+        </value>
+    </option>
+    <option name="?_COMMENT">
+        <value>
+            <option name="FOREGROUND" value="5394EC"/>
+            <option name="FONT_TYPE" value="3" />
+        </value>
+    </option>
+    <option name="!_COMMENT">
+        <value>
+            <option name="FOREGROUND" value="CC666E"/>
+        </value>
+    </option>
+    <option name="public_KEYWORD">
+        <value>
+            <option name="FOREGROUND" value="FABD2F"/>
+            <!--            CCA266 -->
+        </value>
+    </option>
+</list>
