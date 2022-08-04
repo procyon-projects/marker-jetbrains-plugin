@@ -1,6 +1,7 @@
-package com.github.procyonprojects.marker.model;
+package com.github.procyonprojects.marker.metadata;
 
-public enum TargetType {
+public enum Target {
+
     PACKAGE_LEVEL,
     INTERFACE_LEVEL,
     STRUCT_LEVEL,

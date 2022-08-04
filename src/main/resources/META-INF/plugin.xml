@@ -18,19 +18,19 @@
   <depends>org.jetbrains.plugins.go</depends>
 
   <extensions defaultExtensionNs="com.intellij">
-    <annotator language="go"
+    <!--<annotator language="go"
                implementationClass="com.github.procyonprojects.marker.annotator.GenericCommentHighlighterAnnotator"/>
 
     <applicationService serviceImplementation="com.github.procyonprojects.marker.highlighter.CommentHighlighter"/>
+-->
+    <additionalTextAttributes scheme="Default" file="colorSchemes/Default.xml"/>
+    <additionalTextAttributes scheme="Darcula" file="colorSchemes/Darcula.xml"/>
 
-    <additionalTextAttributes scheme="Default" file="colorSchemes/highlightTokens.xml"/>
-    <additionalTextAttributes scheme="Darcula" file="colorSchemes/highlightTokens.xml"/>
-
-    <codeInsight.parameterInfo language="go" implementationClass="com.github.procyonprojects.marker.parameter.MarkerParameterInfo" order="first"/>
+    <!--<codeInsight.parameterInfo language="go" implementationClass="com.github.procyonprojects.marker.parameter.MarkerParameterInfo" order="first"/>
     <completion.contributor
             language="go"
             implementationClass="com.github.procyonprojects.marker.completion.MarkerCompletionContributor" order="last"/>
-
+-->
      <typedHandler implementation="com.github.procyonprojects.marker.delegate.MarkerTypedHandlerDelegate" id="marker" order="first"/>
   </extensions>
 

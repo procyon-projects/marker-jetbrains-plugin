@@ -1,301 +1,277 @@
 package com.github.procyonprojects.marker.highlighter;
 
-import com.intellij.openapi.components.Service;
+import com.github.procyonprojects.marker.element.*;
+import com.github.procyonprojects.marker.metadata.Definition;
+import com.github.procyonprojects.marker.metadata.Enum;
+import com.github.procyonprojects.marker.fix.MissingParameterFix;
+import com.github.procyonprojects.marker.metadata.Parameter;
+import com.intellij.codeInspection.ProblemHighlightType;
+import com.intellij.lang.annotation.AnnotationHolder;
+import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
-import com.intellij.openapi.util.Pair;
 import com.intellij.openapi.util.TextRange;
-import org.apache.commons.lang.StringUtils;
+import org.apache.commons.collections.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-@Service
-public class CommentHighlighter implements TokenHighlighter {
+public class CommentHighlighter {
 
-    //private static final HighlightTokenConfiguration tokenConfiguration = ApplicationManager.getApplication().getService(HighlightTokenConfiguration.class);
-
-    private static final String DOC_COMMENT_START_LINE = "/**";
-    private static final List<Character> START_LINE_CHARACTERS_LIST = Arrays.asList('/', '<', '-', ' ', '#', '*', '!', '\t', '{');
-
-    private boolean isMarkerComment(String text) {
-        if (!StringUtils.startsWith(text, "//")) {
-            return false;
-        }
-
-        String comment = text.substring(2).trim();
-
-        if (comment.length() < 1 || comment.charAt(0) != '+') {
-            return false;
-        }
-
-        return true;
-    }
-
-    private String getMarkerName(String markerComment) {
-        markerComment = markerComment.substring(1);
-
-        String[] nameFieldParts = markerComment.split("=", 2);
-
-
-        if (nameFieldParts.length == 1) {
-            return nameFieldParts[0];
-        }
-
-        String name = nameFieldParts[0];
-
-        String[] nameParts = name.split(":");
-
-        if (nameParts.length > 1) {
-            name = String.join(":", Arrays.copyOfRange(nameParts, 0, nameParts.length - 1));
-        }
-
-        return name;
-    }
-
-    private String getMarkerAnonymousName(String markerComment) {
-        markerComment = markerComment.substring(1);
-
-        String[] nameFieldParts = markerComment.split("=", 2);
-
-        return nameFieldParts[0];
-    }
-
-    private String getMarkerOptions(String markerComment) {
-        markerComment = markerComment.substring(1);
-
-        String[] nameFieldParts = markerComment.split("=", 2);
-
-
-        if (nameFieldParts.length == 1) {
-            return "";
-        }
-
-        return nameFieldParts[1];
-    }
-
-
-    @Override
-    public List<Pair<TextRange, TextAttributesKey>> getHighlights(String text, int startOffset) {
-
-        Collection<String> supportedTokens = new ArrayList<>();
-        supportedTokens.add("+");
-        supportedTokens.add("#");
-        supportedTokens.add("!");
-        // tokenConfiguration.getAllTokensByType(getSupportedTokenTypes());
-
-        List<Pair<TextRange, TextAttributesKey>> highlightAnnotationData = new ArrayList<>();
-
-        if (!isMarkerComment(text)) {
-            return highlightAnnotationData;
-        }
-
-
-        // General comment data
-        final int commentLength = text.length();
-        final int lastCharPosition = text.length() - 1;
-        final boolean isDocComment = text.startsWith(DOC_COMMENT_START_LINE);
-        int currentLineStartIndex = startOffset;
-
-        final String commentText = text.substring(2).trim();
-        final String markerName = getMarkerName(commentText);
-        final String anonymousName = getMarkerAnonymousName(commentText);
-        final String options = getMarkerOptions(commentText);
-
-
-        final int markerStartIndex = startOffset + text.indexOf("+") ;
-
-        String[] markerParts = anonymousName.split(":");
-        int highlightStartIndex = markerStartIndex;
-        for (int index = 0; index < markerParts.length; index++) {
-            String markerPart = markerParts[index];
-            TextRange textRange = new TextRange(highlightStartIndex, highlightStartIndex + markerPart.length() + 1);
-            highlightAnnotationData.add(Pair.create(textRange, TextAttributesKey.createTextAttributesKey(getTextAttributeKeyByToken("+"))));
-            highlightStartIndex = highlightStartIndex + markerPart.length();
-
-            if (index == markerParts.length - 1 && !anonymousName.endsWith(":")) {
-                continue;
-            }
-
-            highlightStartIndex = highlightStartIndex + 1;
-
-            TextRange colonRange = new TextRange(highlightStartIndex, highlightStartIndex + 1);
-            highlightAnnotationData.add(Pair.create(colonRange, TextAttributesKey.createTextAttributesKey(getTextAttributeKeyByToken(":"))));
-        }
-
-        //TextRange textRange = new TextRange(markerStartIndex, markerStartIndex + anonymousName.length() + 1);
-        //highlightAnnotationData.add(Pair.create(textRange, TextAttributesKey.createTextAttributesKey(getTextAttributeKeyByToken("+"))));
-
-        final boolean useValueSyntax = true;
-        boolean valueArgumentProcessed = false;
-        boolean canBeValueArgument = false;
-
-        final MarkerCommentScanner scanner = new MarkerCommentScanner(options);
-
-        if (scanner.peek() != MarkerCommentScanner.EOF) {
-            while (true) {
-             String argumentName;
-             int currentCharacter = scanner.skipWhitespaces();
-
-             if (useValueSyntax && !valueArgumentProcessed && currentCharacter == '{' || currentCharacter == '"') {
-                canBeValueArgument = true;
-             } else if (useValueSyntax && !scanner.expect(MarkerCommentScanner.IDENTIFIER, "Value")) {
-                 continue;
-             } else if (!useValueSyntax && !scanner.expect(MarkerCommentScanner.IDENTIFIER, "Argument name")) {
-                 continue;
-             }
-
-             argumentName = scanner.token();
-             currentCharacter = scanner.skipWhitespaces();
-
-             if (useValueSyntax && !valueArgumentProcessed && (currentCharacter == MarkerCommentScanner.EOF || currentCharacter == ',' || currentCharacter == ';')) {
-                 canBeValueArgument = true;
-             } else if ((valueArgumentProcessed || !canBeValueArgument) && !scanner.expect('=', "Equals Sign '='")){
-                 break;
-             }
-
-             if (canBeValueArgument && !valueArgumentProcessed) {
-                 valueArgumentProcessed = true;
-                 argumentName = "Value";
-                 scanner.reset();
-             }
-
-             nextAttribute:
-                if (scanner.peek() == MarkerCommentScanner.EOF) {
-                    break;
+    private void highlightStringElement(StringElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder, boolean isMapValue) {
+        if (element.getParts().size() == 1 && !isMapValue) {
+            Element value = element.getParts().get(0);
+            if (!value.getText().startsWith("'") && !value.getText().startsWith("\"") && !value.getText().startsWith("`")) {
+                if (containerTextRange.contains(value.getRange())) {
+                    holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                            .range(value.getRange())
+                            .textAttributes(createTextAttribute("STRING_KEY"))
+                            .create();
                 }
 
-                if (!scanner.expect(',', "Comma")) {
-                    // error
-                    break;
+                return;
+            }
+        }
+
+        for (Element part : element.getParts()) {
+            if (containerTextRange.contains(part.getRange())) {
+                holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                        .range(part.getRange())
+                        .textAttributes(createTextAttribute("STRING_VALUE"))
+                        .create();
+            }
+        }
+
+    }
+
+    private void highlightSliceElement(SliceElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
+        final Parameter parameter = element.getParameter();
+        final List<Enum> enumList = parameter.getEnumValues();
+
+        final List<Element> items = new ArrayList<>(); // TODO
+        final Set<String> usedItems = new HashSet<>();
+
+        for (Element item : items) {
+            final String text = item.getText();
+
+            if (!enumList.isEmpty() && !",".equals(text) && !"{".equals(text) && !"}".equals(text) && !";".equals(text) && usedItems.contains(item.getText()) && containerTextRange.contains(item.getRange())) {
+                holder.newAnnotation(HighlightSeverity.ERROR, "Duplicate item")
+                        .range(item.getRange())
+                        .textAttributes(createTextAttribute("DUPLICATE"))
+                        .create();
+            }  else if (!enumList.isEmpty() && !",".equals(text) && !"{".equals(text) && !"}".equals(text) && !";".equals(text) && enumList.stream().noneMatch(enumItem -> enumItem.getValue().equals(text)) && containerTextRange.contains(item.getRange())) {
+                final UnresolvedElement unresolvedElement = new UnresolvedElement(String.format("cannot resolve '%s' enum value", text), text, item.getRange());
+                highlightElement(unresolvedElement, containerTextRange, holder, false);
+            } else {
+                highlightElement(item, containerTextRange, holder, false);
+            }
+
+            usedItems.add(item.getText());
+        }
+    }
+
+    private void highlightMapElement(MapElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
+        final List<Element> items = element.getItems();
+        final Set<String> usedMapKeys = new HashSet<>();
+
+        for (Element item : items) {
+            highlightElement(item, containerTextRange, holder, false);
+
+            if (item instanceof KeyValueElement) {
+                KeyValueElement keyValueElement = (KeyValueElement) item;
+
+                if (keyValueElement.getKeyElement() != null) {
+                    if (usedMapKeys.contains(keyValueElement.getKeyElement().getText()) && keyValueElement.getKeyElement() instanceof StringElement) {
+                        StringElement keyElement = (StringElement) keyValueElement.getKeyElement();
+                        for (Element part : keyElement.getParts()) {
+                            if (containerTextRange.contains(part.getRange())) {
+                                holder.newAnnotation(HighlightSeverity.ERROR, "Duplicate map key")
+                                        .range(part.getRange())
+                                        .textAttributes(createTextAttribute("DUPLICATE"))
+                                        .create();
+                            }
+                        }
+                    }
+
+                    usedMapKeys.add(keyValueElement.getText());
                 }
+
             }
         }
+    }
 
-        // Variables to process current line highlighting
-        // ? Move into separate DTO object? Will it decrease performance?
-        boolean isProcessedCurrentLine = false;
-        boolean isHighlightedCurrentLine = false;
-        boolean isSkippedFirstStarCharInDocComment = false;
-        TextAttributesKey currentLineHighlightAttribute = null;
+    private void highlightKeyValueElement(KeyValueElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
+        if (element.getKeyElement() != null) {
+            highlightElement(element.getKeyElement(), containerTextRange, holder, false);
+        }
 
-        // Result list of pairs from which annotation would be created
+        if (element.getColonElement() != null) {
+            highlightElement(element.getColonElement(), containerTextRange, holder, false);
+        }
 
-        // Code is a little bit crappy, but has better performance
-        /*
-        for (int i = 0; i < commentLength; i++) {
-            char c = text.charAt(i);
-            // Reset attributes and create highlight on line end
-            if (c == '\n' || i == lastCharPosition) {
-                if (isHighlightedCurrentLine) {
-                    TextRange textRange = new TextRange(currentLineStartIndex + text.indexOf("+"), startOffset + i + 1);
-                    highlightAnnotationData.add(Pair.create(textRange, currentLineHighlightAttribute));
+        if (element.getValueElement() != null) {
+            highlightElement(element.getValueElement(), containerTextRange, holder, true);
+        }
+    }
+
+    private void highlightBooleanElement(BooleanElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
+        if (!containerTextRange.contains(element.getRange())) {
+            return;
+        }
+
+        holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                .range(element.getRange())
+                .textAttributes(createTextAttribute("BOOLEAN_VALUE"))
+                .create();
+    }
+
+    private void highlightIntegerElement(IntegerElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
+        if (!containerTextRange.contains(element.getRange())) {
+            return;
+        }
+
+        holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                .range(element.getRange())
+                .textAttributes(createTextAttribute("INTEGER_VALUE"))
+                .create();
+    }
+
+    private void highlightBracesAndOperators(Element element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
+        if (!containerTextRange.contains(element.getRange())) {
+            return;
+        }
+
+        holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                .range(element.getRange())
+                .textAttributes(createTextAttribute("BRACES_AND_OPERATORS"))
+                .create();
+    }
+
+    private void highlightExpectedElement(ExpectedElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
+        if (!containerTextRange.contains(element.getRange())) {
+            return;
+        }
+
+        holder.newAnnotation(HighlightSeverity.ERROR, element.getMessage())
+                .range(element.getRange())
+                .textAttributes(createTextAttribute("EXPECTED"))
+                .create();
+    }
+
+    private void highlightUnresolvedElement(UnresolvedElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
+        if (!containerTextRange.contains(element.getRange())) {
+            return;
+        }
+
+        holder.newAnnotation(HighlightSeverity.ERROR, "")
+                .range(element.getRange())
+                .highlightType(ProblemHighlightType.LIKE_UNUSED_SYMBOL)
+                .create();
+    }
+
+    private void highlightMarkerElement(MarkerElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
+        if (!containerTextRange.contains(element.getRange())) {
+            return;
+        }
+
+        holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                .range(element.getRange())
+                .textAttributes(createTextAttribute("MARKER_NAME"))
+                .create();
+
+        final List<ParameterElement> parameterElements = element.getParameterElements();
+        final Set<String> seen = new HashSet<>();
+
+        for (ParameterElement parameterElement : parameterElements) {
+
+            if (parameterElement.getName() != null) {
+                final Element nameElement = parameterElement.getName();
+
+                if (nameElement instanceof UnresolvedElement || nameElement instanceof ExpectedElement) {
+                    highlightElement(nameElement, containerTextRange, holder, false);
+                } else {
+
+                    if (containerTextRange.contains(nameElement.getRange())) {
+
+                        if (seen.contains(nameElement.getText())) {
+                            holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                                    .range(nameElement.getRange())
+                                    .textAttributes(createTextAttribute("MARKER_PARAMETER_NAME"))
+                                    .create();
+                        } else {
+                            holder.newAnnotation(HighlightSeverity.ERROR, "Duplicate parameter")
+                                    .range(nameElement.getRange())
+                                    .textAttributes(createTextAttribute("MARKER_DUPLICATE_PARAMETER"))
+                                    .create();
+                        }
+
+                    }
                 }
-                currentLineStartIndex = startOffset + i + 1;
-                isHighlightedCurrentLine = false;
-                isProcessedCurrentLine = false;
-                isSkippedFirstStarCharInDocComment = false;
-                continue;
+
+
+                seen.add(nameElement.getText());
+            } else {
+                seen.add("Value");
             }
 
-            // Skip processing of current char in line if highlight was already defined
-            if (isProcessedCurrentLine) {
-                continue;
+            if (parameterElement.getEqualSign() != null) {
+                highlightElement(parameterElement.getEqualSign(), containerTextRange, holder, false);
             }
 
-            // Skip processing of first "*" in doc comments
-            if (!isSkippedFirstStarCharInDocComment && shouldSkipFistStarInDocComment(c, isDocComment)) {
-                isSkippedFirstStarCharInDocComment = true;
-                continue;
+            if (parameterElement.getValue() != null) {
+                highlightElement(parameterElement.getValue(), containerTextRange, holder, false);
             }
 
-            // Create highlight if current char is valid highlight char
-            if (isValidPosition(text, i) && isHighlightTriggerChar(c, supportedTokens) && containsHighlightToken(text.substring(i), supportedTokens)) {
-                isHighlightedCurrentLine = true;
-                isProcessedCurrentLine = true;
-                currentLineHighlightAttribute = getHighlightTextAttribute(text.substring(i), supportedTokens);
-            }
-
-            // Check that line highlight was defined and no more processing needs
-            if (!isValidStartLineChar(c)) {
-                isProcessedCurrentLine = true;
+            Element nextElement = parameterElement.getNext();
+            if (nextElement != null && ",".equals(nextElement.getText())) {
+                highlightElement(nextElement, containerTextRange, holder, false);
             }
         }
 
-         */
-        return highlightAnnotationData;
-    }
-
-    private boolean shouldSkipFistStarInDocComment(char c, boolean isDocComment) {
-        return isDocComment && c == '*';
-    }
-
-
-    private boolean isValidPosition(String comment, int i) {
-        char c = comment.charAt(i);
-        // Length and i checks is used to not fall in StringIndexOutOfBoundsException
-        if (i > 0) {
-            int length = comment.length();
-            if (c == '!' && length >= 3) {
-                // Skip "<!-" and shebang "#!/"
-                return !((comment.charAt(i - 1) == '<' && comment.charAt(i + 1) == '-') || (comment.charAt(i - 1) == '#' && comment.charAt(i + 1) == '/'));
-            } else if (c == '*') {
-
-                // Skip "/*", "*/", "/**"
-                return !(comment.charAt(i - 1) == '/' || (i >= 2 && comment.charAt(i - 2) == '/' && comment.charAt(i - 1) == '*') || ((i + 1) < length && comment.charAt(i + 1) == '/'));
+        final Definition definition = element.getDefinition();
+        final List<String> missingParams = new ArrayList<>();
+        for (Parameter parameter : definition.getParameters()) {
+            if (parameter.isRequired() && !seen.contains(parameter.getName())) {
+                missingParams.add(parameter.getName());
             }
         }
 
-        return true;
-    }
-
-    private boolean isValidStartLineChar(char c) {
-        return START_LINE_CHARACTERS_LIST.contains(c);
-    }
-
-    private boolean isHighlightTriggerChar(char c, Collection<String> supportedTokens) {
-        for (String token : supportedTokens) {
-            if (token.charAt(0) == c) {
-                return true;
-            }
+        if (CollectionUtils.isNotEmpty(missingParams) && containerTextRange.contains(element.getRange())) {
+            holder.newAnnotation(HighlightSeverity.ERROR, "Missing parameters : " + missingParams)
+                    .range(element.getRange())
+                    .textAttributes(createTextAttribute("MARKER_MISSING_PARAMETERS"))
+                    .withFix(new MissingParameterFix(missingParams))
+                    .create();
         }
-
-        return false;
     }
 
-    private boolean containsHighlightToken(String commentSubstring, Collection<String> supportedTokens) {
-        // ! We resolve first acceptable token. Tokens are received from saved configuration, so they are
-        // ! always sorted by length desc.
-        // ! In such case it allows to resolve longest token in case there is overlapping tokens.
+    private TextAttributesKey createTextAttribute(String attributeKey) {
+        return TextAttributesKey.createTextAttributesKey(attributeKey);
+    }
 
-        // ! For example, we have tokens ">", ">>", ">>>" and comment line "// >>>".
-        // ! In such case we want to resolve token ">>>", not ">".
-
-        for (String token : supportedTokens) {
-            if (commentSubstring.startsWith(token)) {
-                return true;
-            }
+    private void highlightElement(Element element, TextRange containerTextRange, @NotNull AnnotationHolder holder, boolean isMapValue) {
+        if (element instanceof MarkerElement) {
+            highlightMarkerElement((MarkerElement) element, containerTextRange, holder);
+        } else if (element instanceof ExpectedElement) {
+            highlightExpectedElement((ExpectedElement) element, containerTextRange, holder);
+        } else if (element instanceof UnresolvedElement) {
+           highlightUnresolvedElement((UnresolvedElement) element, containerTextRange, holder);
+        } else if (element instanceof StringElement) {
+            highlightStringElement((StringElement) element, containerTextRange, holder, isMapValue);
+        } else if (element instanceof SliceElement) {
+            highlightSliceElement((SliceElement) element, containerTextRange, holder);
+        } else if (element instanceof MapElement) {
+            highlightMapElement((MapElement) element, containerTextRange, holder);
+        } else if (element instanceof KeyValueElement) {
+            highlightKeyValueElement((KeyValueElement)element, containerTextRange, holder);
+        } else if (element instanceof BooleanElement) {
+            highlightBooleanElement((BooleanElement) element, containerTextRange, holder);
+        } else if (element instanceof IntegerElement) {
+            highlightIntegerElement((IntegerElement) element, containerTextRange, holder);
+        } else {
+            highlightBracesAndOperators(element, containerTextRange, holder);
         }
-        return false;
-    }
-
-
-    private TextAttributesKey getHighlightTextAttribute(String commentSubstring, Collection<String> supportedTokens) {
-        for (String token : supportedTokens) {
-            if (commentSubstring.startsWith(token)) {
-                return TextAttributesKey.createTextAttributesKey(getTextAttributeKeyByToken(token));
-            }
-        }
-        return null;
-    }
-
-    @NotNull
-    @Override
-    public String getTextAttributeKeyByToken(String token) {
-        return token + "_COMMENT";
-    }
-
-    @Override
-    public List<HighlightTokenType> getSupportedTokenTypes() {
-        return Collections.singletonList(HighlightTokenType.COMMENT);
     }
 }
