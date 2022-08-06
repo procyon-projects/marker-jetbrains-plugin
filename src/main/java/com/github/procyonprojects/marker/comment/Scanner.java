@@ -1,8 +1,10 @@
 package com.github.procyonprojects.marker.comment;
 
 import com.github.procyonprojects.marker.element.Element;
+import com.github.procyonprojects.marker.metadata.Definition;
 
 import java.util.List;
+import java.util.Optional;
 
 public class Scanner {
 
@@ -19,8 +21,44 @@ public class Scanner {
     private int startPosition;
     private int endPosition;
     private int searchIndex;
+
     private List<Element> tokenList;
-    private List<String> lines;
+    private List<Comment.Line> lines;
+
+    private String firstLineText;
+    private int firstLineStartPosition;
+
+    public Scanner(Definition definition, Comment comment) {
+        this.lines = comment.getLines();
+
+        final Optional<Comment.Line> firstLine = comment.firstLine();
+
+        final String markerName = "+" + definition.getName();
+        final String firstLineText = firstLine.get().getText();
+        final int firstLineStartOffset = firstLine.get().startOffset();
+
+        int markerStartIndex = firstLineText.indexOf(markerName);
+        int markerEndIndex = markerStartIndex + markerName.length();
+
+        if (firstLineText.contains(markerName + ":")) {
+            markerStartIndex = firstLineText.indexOf(markerName + ":");
+            markerEndIndex = markerStartIndex + markerName.length() + 1;
+        }
+
+        this.firstLineText = firstLine.get().getText().stripTrailing().substring(markerEndIndex+1);
+
+        if (comment.getLines().size() > 1) {
+            this.firstLineText = this.firstLineText.substring(0, this.firstLineText.length() - 2);
+        }
+
+        this.firstLineStartPosition = firstLineStartOffset + markerStartIndex;
+
+        this.line = this.firstLineText.toCharArray();
+        this.current = IDENTIFIER;
+        this.startPosition = -1;
+        this.endPosition = 0;
+        this.searchIndex = -1;
+    }
 
     public int scan() {
         int character = skipWhitespaces();
@@ -87,9 +125,9 @@ public class Scanner {
         lineIndex++;
 
         if (lineIndex == lines.size() - 1) {
-            line = lines.get(lineIndex).toCharArray();
+            line = lines.get(lineIndex).getText().toCharArray();
         } else {
-            line = lines.get(lineIndex).substring(0, lines.get(lineIndex).length() - 1).toCharArray();
+            line = lines.get(lineIndex).getText().substring(0, lines.get(lineIndex).getText().length() - 2).toCharArray();
         }
 
         searchIndex = 0;
@@ -147,6 +185,14 @@ public class Scanner {
         return String.valueOf(line);
     }
 
+    public int lineIndex() {
+        return lineIndex;
+    }
+
+    public void setLineIndex(int lineIndex) {
+        this.lineIndex = lineIndex;
+    }
+
     public int lineLength() {
         return line.length;
     }
@@ -163,12 +209,24 @@ public class Scanner {
         return searchIndex;
     }
 
+    public void setSearchIndex(int searchIndex) {
+        this.searchIndex = searchIndex;
+    }
+
     public int originalStartPosition() {
-        return 0;
+        if (lineIndex == 0) {
+            return startPosition + firstLineStartPosition;
+        }
+
+        return startPosition + lines.get(lineIndex).startOffset();
     }
 
     public int originalEndPosition() {
-        return 0;
+        if (lineIndex == 0) {
+            return endPosition + firstLineStartPosition;
+        }
+
+        return endPosition + lines.get(lineIndex).startOffset();
     }
 
     public boolean isIdentifier(int character, int index) {

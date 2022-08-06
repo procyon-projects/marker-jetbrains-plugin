@@ -3,10 +3,12 @@ package com.github.procyonprojects.marker.metadata.provider;
 import com.github.procyonprojects.marker.Constants;
 import com.github.procyonprojects.marker.metadata.*;
 import com.github.procyonprojects.marker.metadata.Enum;
+import com.intellij.openapi.components.Service;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
+@Service
 public class DefinitionProvider {
 
     private final static Map<String, List<Definition>> definitionMap = new HashMap<>();

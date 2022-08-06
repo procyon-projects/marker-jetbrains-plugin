@@ -1,24 +1,33 @@
 package com.github.procyonprojects.marker.highlighter;
 
+import com.github.procyonprojects.marker.TargetInfo;
+import com.github.procyonprojects.marker.Utils;
+import com.github.procyonprojects.marker.comment.Comment;
+import com.github.procyonprojects.marker.comment.ParseResult;
+import com.github.procyonprojects.marker.comment.Parser;
 import com.github.procyonprojects.marker.element.*;
 import com.github.procyonprojects.marker.metadata.Definition;
 import com.github.procyonprojects.marker.metadata.Enum;
 import com.github.procyonprojects.marker.fix.MissingParameterFix;
 import com.github.procyonprojects.marker.metadata.Parameter;
+import com.github.procyonprojects.marker.metadata.Target;
+import com.github.procyonprojects.marker.metadata.provider.DefinitionProvider;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.HighlightSeverity;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.psi.PsiComment;
+import com.intellij.psi.PsiElement;
 import org.apache.commons.collections.CollectionUtils;
 import org.jetbrains.annotations.NotNull;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 public class CommentHighlighter {
+
+    private static final DefinitionProvider definitionProvider = ApplicationManager.getApplication().getService(DefinitionProvider.class);
 
     private void highlightStringElement(StringElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder, boolean isMapValue) {
         if (element.getParts().size() == 1 && !isMapValue) {
@@ -272,6 +281,49 @@ public class CommentHighlighter {
             highlightIntegerElement((IntegerElement) element, containerTextRange, holder);
         } else {
             highlightBracesAndOperators(element, containerTextRange, holder);
+        }
+    }
+
+    private void highlightNewLineElements(List<Element> elements, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
+        if (CollectionUtils.isEmpty(elements)) {
+            return;
+        }
+
+        for (Element newLineElement : elements) {
+            if (containerTextRange.contains(newLineElement.getRange())) {
+                holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                        .range(newLineElement.getRange())
+                        .textAttributes(createTextAttribute("NEW_LINE_CHARACTER"))
+                        .create();
+            }
+        }
+    }
+
+    public void highlight(Comment comment, PsiElement element, AnnotationHolder holder) {
+        final TargetInfo targetInfo = Utils.findTarget((PsiComment) element);
+        if (targetInfo.getTarget() == Target.INVALID) {
+            return;
+        }
+
+        final Comment.Line firstLine = comment.firstLine().get();
+        final String firstLineText = firstLine.getText().trim();
+        final String anonymousName = Utils.getMarkerAnonymousName(firstLineText);
+        final String markerName = Utils.getMarkerName(firstLineText);
+
+        Optional<Definition> definition = definitionProvider.find(targetInfo.getTarget(), anonymousName);
+
+        if (definition.isEmpty()) {
+            definition = definitionProvider.find(targetInfo.getTarget(), markerName);
+            if (definition.isEmpty()) {
+                return;
+            }
+        }
+
+        final Parser parser = new Parser();
+        final ParseResult result = parser.parse(definition.get(), comment);
+        if (result != null) {
+            highlightElement(result.getMarkerElement(), element.getTextRange(), holder, false);
+            highlightNewLineElements(result.getNextLineElements(), element.getTextRange(), holder);
         }
     }
 }

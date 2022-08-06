@@ -1,5 +1,7 @@
 package com.github.procyonprojects.marker.metadata;
 
+import org.jetbrains.annotations.NotNull;
+
 public class TypeInfo {
 
     public static final TypeInfo INVALID_TYPE_INFO = new TypeInfo(Type.InvalidType);

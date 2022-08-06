@@ -1,8 +1,10 @@
 package com.github.procyonprojects.marker.comment;
 
+import b.h.P;
 import com.github.procyonprojects.marker.element.*;
 import com.github.procyonprojects.marker.metadata.Definition;
 import com.github.procyonprojects.marker.metadata.Parameter;
+import com.github.procyonprojects.marker.metadata.Type;
 import com.github.procyonprojects.marker.metadata.TypeInfo;
 import com.intellij.openapi.util.TextRange;
 
@@ -12,11 +14,11 @@ import java.util.Optional;
 
 public class Parser {
 
-    public void parse(Definition definition, Comment comment) {
+    public ParseResult parse(Definition definition, Comment comment) {
         final Optional<Comment.Line> firstLine = comment.firstLine();
 
         if (firstLine.isEmpty()) {
-            return;
+            return null;
         }
 
         final String markerName = "+" + definition.getName();
@@ -37,7 +39,7 @@ public class Parser {
 
         markerElement.setRange(new TextRange(markerStartIndex, markerEndIndex));
 
-        final Scanner scanner = new Scanner();
+        final Scanner scanner = new Scanner(definition, comment);
         final Map<String, Parameter> seenMap = new HashMap<>();
 
         Element currentElement = markerElement;
@@ -115,6 +117,8 @@ public class Parser {
                 }
             }
         }
+
+        return new ParseResult(markerElement, null);
     }
 
     private Element parseValue(Scanner scanner, Parameter parameter, TypeInfo typeInfo) {
@@ -129,9 +133,9 @@ public class Parser {
             case SliceType:
                 return parseSliceValues(scanner, typeInfo.getItemType());
             case MapType:
-                return parseMapValues(scanner);
+                return parseMapValues(scanner, typeInfo.getItemType());
             case AnyType:
-            TypeInfo inferredType = interType(scanner, false);
+            TypeInfo inferredType = inferType(scanner, false);
             return parseValue(scanner, parameter, inferredType);
         }
 
@@ -317,7 +321,7 @@ public class Parser {
         return sliceElement;
     }
 
-    private Element parseMapValues(Scanner scanner) {
+    private Element parseMapValues(Scanner scanner, TypeInfo itemType) {
         final MapElement mapElement = new MapElement();
 
         if (!scanner.expect('{', "Left Curly Bracket")) {
@@ -359,7 +363,7 @@ public class Parser {
                 }
             }
 
-            Element valueElement = parseValue(scanner, null, null);
+            Element valueElement = parseValue(scanner, null, itemType);
 
             if (valueElement == null) {
                 return mapElement;
@@ -394,7 +398,118 @@ public class Parser {
         return mapElement;
     }
 
-    private TypeInfo interType(Scanner scanner, boolean ignoreLegacySlice) {
-        return null;
+    private TypeInfo inferType(Scanner scanner, boolean ignoreLegacySlice) {
+        int character = scanner.skipWhitespaces();
+        int searchIndex = scanner.searchIndex();
+        int lineIndex = scanner.lineIndex();
+
+        if (!ignoreLegacySlice) {
+            TypeInfo itemType = inferType(scanner, true);
+
+            int token = scanner.scan();
+
+            for (; token != ',' && token != Scanner.EOF && token != ';'; token = scanner.scan()) {
+                if (token == Scanner.NEW_LINE) {
+                    scanner.nextLine();
+                    token = scanner.scan();
+                }
+            }
+
+            scanner.setLineIndex(lineIndex);
+            scanner.setSearchIndex(searchIndex);
+
+            if (token == ';') {
+                return new TypeInfo(Type.SliceType, itemType);
+            }
+
+            return itemType;
+        }
+
+        if (character == '"' || character == '\'' || character == '`') {
+            return new TypeInfo(Type.StringType);
+        }
+
+        if (character == '{') {
+            scanner.scan();
+
+            TypeInfo elementType = inferType(scanner, true);
+
+            // skip left curly bracket character
+            scanner.setLineIndex(lineIndex);
+            scanner.setSearchIndex(searchIndex+1);
+
+            assert elementType != null;
+            if (Type.StringType == elementType.getActualType()) {
+                int token = scanner.skipWhitespaces();
+
+                if (token == Scanner.NEW_LINE) {
+                    if (!scanner.nextLine()) {
+                        scanner.setLineIndex(lineIndex);
+                        scanner.setSearchIndex(searchIndex);
+                    }
+
+                    return new TypeInfo(Type.SliceType, elementType);
+                }
+
+                parseStringValue(scanner);
+                token = scanner.scan();
+
+                if (token == Scanner.NEW_LINE) {
+                    if (!scanner.nextLine()) {
+                        scanner.setLineIndex(lineIndex);
+                        scanner.setSearchIndex(searchIndex);
+
+                        return new TypeInfo(Type.SliceType, elementType);
+                    } else {
+                        token = scanner.scan();
+                    }
+                }
+
+                if (token == ':') {
+                    scanner.setLineIndex(lineIndex);
+                    scanner.setSearchIndex(searchIndex);
+                    return new TypeInfo(Type.MapType, TypeInfo.ANY_TYPE_INFO);
+                }
+            }
+
+            scanner.setLineIndex(lineIndex);
+            scanner.setSearchIndex(searchIndex);
+
+            return new TypeInfo(Type.SliceType, elementType);
+        }
+
+        boolean canBeString = false;
+
+        if (character == 't' || character == 'f') {
+            int token = scanner.scan();
+
+            if (token == Scanner.IDENTIFIER) {
+
+                if ("true".equals(scanner.token()) || "false".equals(scanner.token())) {
+                    scanner.setLineIndex(lineIndex);
+                    scanner.setSearchIndex(searchIndex);
+                    return new TypeInfo(Type.BooleanType);
+                }
+
+                canBeString = true;
+            } else {
+                return TypeInfo.INVALID_TYPE_INFO;
+            }
+
+        }
+
+        if (!canBeString) {
+            int token = scanner.scan();
+
+            if (token == '-') {
+                token = scanner.scan();
+            }
+
+            if (token == Scanner.INTEGER_VALUE) {
+                return new TypeInfo(Type.SignedIntegerType);
+            }
+        }
+
+        return new TypeInfo(Type.StringType);
     }
 }
