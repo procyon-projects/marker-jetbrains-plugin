@@ -9,6 +9,10 @@ public class Comment {
 
     private List<Line> lines;
 
+    public Comment(List<Line> lines) {
+        this.lines = lines;
+    }
+
     public List<Line> getLines() {
         return lines;
     }
@@ -32,6 +36,10 @@ public class Comment {
     public static class Line {
 
         private PsiElement element;
+
+        public Line(PsiElement element) {
+            this.element = element;
+        }
 
         public PsiElement getElement() {
             return element;
