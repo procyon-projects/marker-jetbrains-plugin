@@ -16,6 +16,7 @@ import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.application.ApplicationManager;
+import com.intellij.openapi.components.Service;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
 import com.intellij.openapi.util.TextRange;
 import com.intellij.psi.PsiComment;
@@ -25,7 +26,8 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.*;
 
-public class CommentHighlighter {
+@Service
+public class MarkerCommentHighlighter {
 
     private static final DefinitionProvider definitionProvider = ApplicationManager.getApplication().getService(DefinitionProvider.class);
 

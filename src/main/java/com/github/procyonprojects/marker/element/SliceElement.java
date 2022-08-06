@@ -2,6 +2,8 @@ package com.github.procyonprojects.marker.element;
 
 import com.github.procyonprojects.marker.metadata.Parameter;
 
+import java.util.List;
+
 public class SliceElement extends Element {
 
     private Element leftBrace;
@@ -30,5 +32,9 @@ public class SliceElement extends Element {
 
     public void setParameter(Parameter parameter) {
         this.parameter = parameter;
+    }
+
+    public List<Element> getItems() {
+        return null;
     }
 }

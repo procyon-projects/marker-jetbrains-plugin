@@ -34,4 +34,8 @@ public class MarkerElement extends Element {
 
         return parameterElements;
     }
+
+    public List<String> getParameters() {
+        return null;
+    }
 }
