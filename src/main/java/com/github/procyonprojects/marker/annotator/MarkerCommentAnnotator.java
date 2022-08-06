@@ -2,20 +2,18 @@ package com.github.procyonprojects.marker.annotator;
 
 import com.github.procyonprojects.marker.Utils;
 import com.github.procyonprojects.marker.comment.Comment;
-import com.github.procyonprojects.marker.highlighter.CommentHighlighter;
+import com.github.procyonprojects.marker.highlighter.MarkerCommentHighlighter;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.Annotator;
 import com.intellij.openapi.application.ApplicationManager;
-import com.intellij.openapi.components.Service;
 import com.intellij.psi.PsiElement;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
 
-@Service
-public class CommentAnnotator implements Annotator {
+public class MarkerCommentAnnotator implements Annotator {
 
-    private static final CommentHighlighter commentHighlighter = ApplicationManager.getApplication().getService(CommentHighlighter.class);
+    private static final MarkerCommentHighlighter commentHighlighter = ApplicationManager.getApplication().getService(MarkerCommentHighlighter.class);
 
     @Override
     public void annotate(@NotNull PsiElement element, @NotNull AnnotationHolder holder) {
