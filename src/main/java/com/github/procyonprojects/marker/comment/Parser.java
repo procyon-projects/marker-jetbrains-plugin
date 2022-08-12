@@ -1,6 +1,7 @@
 package com.github.procyonprojects.marker.comment;
 
 import b.h.P;
+import com.github.procyonprojects.marker.Utils;
 import com.github.procyonprojects.marker.element.*;
 import com.github.procyonprojects.marker.metadata.Definition;
 import com.github.procyonprojects.marker.metadata.Parameter;
@@ -8,9 +9,7 @@ import com.github.procyonprojects.marker.metadata.Type;
 import com.github.procyonprojects.marker.metadata.TypeInfo;
 import com.intellij.openapi.util.TextRange;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 public class Parser {
 
@@ -30,11 +29,13 @@ public class Parser {
 
         int markerStartIndex = firstLineText.indexOf(markerName) + firstLineStartOffset;
         int markerEndIndex = markerStartIndex + markerName.length();
+        boolean isValueSyntax = true;
 
         if (firstLineText.contains(markerName + ":")) {
             markerElement.setText(markerName + ":");
             markerStartIndex = firstLineText.indexOf(markerName + ":") + firstLineStartOffset;
             markerEndIndex = markerStartIndex + markerName.length() + 1;
+            isValueSyntax = false;
         }
 
         markerElement.setRange(new TextRange(markerStartIndex, markerEndIndex));
@@ -57,13 +58,29 @@ public class Parser {
                     continue;
                 }
 
-
                 final ParameterElement parameterElement = new ParameterElement();
                 currentElement.setNext(parameterElement);
                 parameterElement.setPrevious(currentElement);
                 currentElement = parameterElement;
 
-                String argumentName = scanner.token();
+                String argumentName = "";
+
+                if (!scanner.expect(Scanner.IDENTIFIER, "Value or Argument Name")) {
+                    if (isValueSyntax) {
+                        if (!"=".equals(scanner.token()) && seenMap.size() == 0) {
+                            parameterElement.setEqualSign(new ExpectedElement("Expected equal '='", "=", scanner.originalPosition()));
+                            break;
+                        } else {
+                            parameterElement.setEqualSign(new Element("=", scanner.originalPosition()));
+                            argumentName = "Value";
+                        }
+                    } else {
+                        parameterElement.setName(new ExpectedElement("Expected argument name", null, scanner.originalPosition()));
+                        break;
+                    }
+                } else {
+                    argumentName = scanner.token();
+                }
 
                 character = scanner.skipWhitespaces();
 
@@ -82,6 +99,7 @@ public class Parser {
                     Parameter anyParameter = new Parameter();
                     anyParameter.setType(TypeInfo.ANY_TYPE_INFO);
                     parameter = Optional.of(anyParameter);
+                    parameterElement.setName(new UnresolvedElement(String.format("Unresolved parameter %s", argumentName), argumentName, scanner.originalPosition()));
                 }
 
                 seenMap.put(argumentName, parameter.get());
@@ -98,7 +116,7 @@ public class Parser {
                 TypeInfo typeInfo = parameter.get().getType();
                 parameterElement.setTypeInfo(typeInfo);
 
-                Element value = parseValue(scanner, parameter.get(), typeInfo);
+                final Element value = parseValue(scanner, parameter.get(), typeInfo);
                 parameterElement.setValue(value);
 
                 scanner.skipWhitespaces();
@@ -112,13 +130,28 @@ public class Parser {
                 }
 
                 if (!scanner.expect(',', "Comma")) {
-
+                    final ExpectedElement expectedComma = new ExpectedElement("Expected comma ','", ",", scanner.originalPosition());
+                    currentElement.setNext(expectedComma);
+                    expectedComma.setPrevious(currentElement);
                     break;
                 }
+
+                final Element commaElement = new Element(",", scanner.originalPosition());
+                currentElement.setNext(commaElement);
+                commaElement.setPrevious(currentElement);
+                currentElement = commaElement;
             }
         }
 
-        return new ParseResult(markerElement, null);
+        final List<Element> nextLineElements = new ArrayList<>();
+        for (Comment.Line line : comment.getLines()) {
+            if (line.getText().endsWith(" \\")) {
+                int startOffset = line.startOffset() + line.getText().length() - 1;
+                nextLineElements.add(new Element("\\", new TextRange(startOffset, startOffset + 1)));
+            }
+        }
+
+        return new ParseResult(markerElement, nextLineElements);
     }
 
     private Element parseValue(Scanner scanner, Parameter parameter, TypeInfo typeInfo) {
@@ -131,12 +164,12 @@ public class Parser {
             case StringType:
                 return parseStringValue(scanner);
             case SliceType:
-                return parseSliceValues(scanner, typeInfo.getItemType());
+                return parseSliceValues(scanner, parameter, typeInfo.getItemType());
             case MapType:
                 return parseMapValues(scanner, typeInfo.getItemType());
             case AnyType:
-            TypeInfo inferredType = inferType(scanner, false);
-            return parseValue(scanner, parameter, inferredType);
+                TypeInfo inferredType = inferType(scanner, false);
+                return parseValue(scanner, parameter, inferredType);
         }
 
         return null;
@@ -144,22 +177,21 @@ public class Parser {
 
     private Element parseBooleanValue(Scanner scanner) {
         if (!scanner.expect(Scanner.IDENTIFIER, "Boolean (true or false)")) {
-            return null;
+            return new ExpectedElement("Expected true or false", scanner.token(), scanner.originalPosition());
         }
 
         final String token = scanner.token();
 
         if (",".equals(token)) {
-            return null;
+            return new ExpectedElement("Expected true or false", token, scanner.originalPosition());
         }
 
         if (!"false".equals(token) && !"true".equals(token)) {
-            return null;
+            return new ExpectedElement("Expected true or false", token, scanner.originalPosition());
         }
 
-        return new BooleanElement();
+        return new BooleanElement(token, scanner.originalPosition());
     }
-
 
     private Element parseIntegerValue(Scanner scanner) {
         int currentCharacter = scanner.peek();
@@ -171,29 +203,39 @@ public class Parser {
         }
 
         if (!scanner.expect(Scanner.INTEGER_VALUE, "Integer")) {
+            String text = scanner.token();
+
+            if (isNegative) {
+                text = "-" + text;
+                scanner.setStartPosition(scanner.startPosition() - 1);
+            }
+
+
+            return new ExpectedElement("Expected integer", text, scanner.originalPosition());
         }
 
         String valueText = scanner.token();
 
         if (isNegative) {
             valueText = "-" + valueText;
+            scanner.setStartPosition(scanner.startPosition() - 1);
         }
+
+        scanner.setEndPosition(scanner.searchIndex());
 
         try {
             final int integerValue = Integer.parseInt(valueText);
-            return new IntegerElement();
+            return new IntegerElement(integerValue, valueText, scanner.originalPosition());
         } catch (NumberFormatException exception) {
-
+            return new ExpectedElement("Expected integer", "", scanner.originalPosition());
         }
-
-        return null;
     }
 
     private Element parseStringValue(Scanner scanner) {
         final int token = scanner.scan();
 
         if (token == Scanner.STRING_VALUE) {
-            return new StringElement();
+            return new StringElement(scanner.tokens());
         }
 
         final int startPosition = scanner.startPosition();
@@ -213,7 +255,7 @@ public class Parser {
             }
         }
 
-        final int endPosition = scanner.searchIndex();
+        final int endPosition = scanner.endPosition();
         String strValue = "";
 
         try {
@@ -223,25 +265,46 @@ public class Parser {
         }
 
         if (initialValue.equals(strValue) || initialValue.equals("-")) {
+            scanner.setStartPosition(startPosition);
             if (token == Scanner.INTEGER_VALUE || (token == Scanner.IDENTIFIER && ("true".equals(strValue) || "false".equals(strValue))) || token == '-') {
-                return null;
+                return new ExpectedElement("Expected string", strValue, scanner.originalPosition());
             }
         }
 
-        if (!strValue.startsWith(",") && !strValue.startsWith(";") && !strValue.startsWith(":") && !strValue.startsWith("{") && !strValue.startsWith("}")) {
+        int leadingSpaces = Utils.countLeadingSpace(strValue);
+        int trailingSpaces = Utils.countTrailingSpaces(strValue);
 
+        try {
+            strValue = strValue.substring(leadingSpaces, strValue.length() - trailingSpaces);
+        } catch (Exception ignored) {
+
+        }
+
+        if (!strValue.startsWith(",") && !strValue.startsWith(";") && !strValue.startsWith(":") && !strValue.startsWith("{") && !strValue.startsWith("}")) {
+            scanner.setStartPosition(startPosition);
+            try {
+                return new StringElement(List.of(new Element(strValue, scanner.originalPosition())));
+            } catch (Exception ignored) {
+
+            }
         }
 
         return null;
     }
 
-    private Element parseSliceValues(Scanner scanner, TypeInfo itemTypeInfo) {
+    private Element parseSliceValues(Scanner scanner, Parameter parameter, TypeInfo itemTypeInfo) {
 
         final SliceElement sliceElement = new SliceElement();
+        sliceElement.setParameter(parameter);
+
+        Element current = null;
 
         if (scanner.skipWhitespaces() == '{') {
+            scanner.setStartPosition(scanner.searchIndex());
+            sliceElement.setLeftBrace(new Element("{", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1)));
 
             scanner.scan();
+
             int character = scanner.skipWhitespaces();
 
             for (; character != '}' && character != Scanner.EOF; character = scanner.skipWhitespaces()) {
@@ -251,15 +314,35 @@ public class Parser {
                     }
                 }
 
-                Element item = parseValue(scanner, null, null);
+                Element item = parseValue(scanner, parameter, itemTypeInfo);
 
                 if (item == null) {
+                    Element expectedItem = new ExpectedElement("Expected slice item", "slice item", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+                    expectedItem.setPrevious(current);
+
+                    if (current != null) {
+                        current.setNext(expectedItem);
+                    } else {
+                        sliceElement.setNext(expectedItem);
+                    }
+
                     return sliceElement;
                 }
+
+                if (current != null) {
+                    current.setNext(item);
+                } else {
+                    sliceElement.setNext(item);
+                }
+
+                item.setPrevious(current);
+                current = item;
 
                 int token = scanner.skipWhitespaces();
 
                 if (token == '}') {
+                    scanner.setStartPosition(scanner.searchIndex());
+                    sliceElement.setRightBrace(new Element("}", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1)));
                     break;
                 } else if (token == Scanner.EOF) {
                     break;
@@ -272,16 +355,30 @@ public class Parser {
                 }
 
                 if (!scanner.expect(',', "Comma ','")) {
-
+                    Element expectedComma = new ExpectedElement("Expected comma", ",", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+                    expectedComma.setPrevious(current);
+                    current.setNext(expectedComma);
                     return sliceElement;
                 }
+
+
+                Element comma = new Element(",", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+                current.setNext(comma);
+                comma.setPrevious(current);
+                current = comma;
             }
 
+            if (current != null && ",".equals(current.getText())) {
+                Element expectedItem = new ExpectedElement("Expected slice item", "slice item", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+                expectedItem.setPrevious(current);
+                current.setNext(expectedItem);
+            }
 
             if (!scanner.expect('}', "Right Curly Bracket '}'")) {
-
+                Element expectedRightBracket = new ExpectedElement("Right Curly Bracket '}'", "}", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+                sliceElement.setRightBrace(expectedRightBracket);
             } else {
-
+                sliceElement.setRightBrace(new Element("}", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1)));
             }
 
             return sliceElement;
@@ -296,7 +393,28 @@ public class Parser {
                 }
             }
 
-            Element item = parseValue(scanner, null, null);
+            Element item = parseValue(scanner, parameter, itemTypeInfo);
+
+            if (item == null) {
+                Element expectedItem = new ExpectedElement("Expected slice item", "slice item", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+                expectedItem.setPrevious(current);
+
+                if (current != null) {
+                    current.setNext(expectedItem);
+                } else {
+                    sliceElement.setNext(expectedItem);
+                }
+
+                return sliceElement;
+            }
+
+            if (current != null) {
+                current.setNext(item);
+            } else {
+                sliceElement.setNext(item);
+            }
+
+            current = item;
 
             int token = scanner.skipWhitespaces();
 
@@ -313,9 +431,17 @@ public class Parser {
             scanner.scan();
 
             if (token != ';') {
+                Element semicolon = new ExpectedElement("Expected semicolon", ";", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+                semicolon.setPrevious(item);
+                current.setNext(semicolon);
                 return sliceElement;
             }
 
+
+            Element semicolon = new Element(";", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+            current.setNext(semicolon);
+            semicolon.setPrevious(current);
+            current = semicolon;
         }
 
         return sliceElement;
@@ -325,10 +451,17 @@ public class Parser {
         final MapElement mapElement = new MapElement();
 
         if (!scanner.expect('{', "Left Curly Bracket")) {
+            Element expectedLeftBracket = new ExpectedElement("Left Curly Bracket '{'", "{", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+            mapElement.setLeftBrace(expectedLeftBracket);
             return mapElement;
         }
 
+        Element curlyBracket = new Element("{", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+        mapElement.setLeftBrace(curlyBracket);
+
         int character = scanner.skipWhitespaces();
+
+        Element current = null;
 
         for (;character != '}' && character != Scanner.EOF; character = scanner.skipWhitespaces()) {
             if (character == Scanner.NEW_LINE) {
@@ -339,12 +472,24 @@ public class Parser {
                 continue;
             }
 
+            final KeyValueElement keyValueElement = new KeyValueElement();
+
+            if (current != null) {
+                current.setNext(keyValueElement);
+            } else {
+                mapElement.setNext(keyValueElement);
+                current = keyValueElement;
+            }
+
             Element keyElement = parseStringValue(scanner);
 
             if (keyElement == null) {
-
+                Element expectedKeyElement = new ExpectedElement("Expected map key", "map key", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+                keyValueElement.setKeyElement(expectedKeyElement);
                 return mapElement;
             }
+
+            keyValueElement.setKeyElement(keyElement);
 
             if (scanner.skipWhitespaces() == Scanner.NEW_LINE) {
                 if (!scanner.nextLine()) {
@@ -353,7 +498,8 @@ public class Parser {
             }
 
             if (!scanner.expect(':', "Colon ':'")) {
-
+                Element expectedColon = new ExpectedElement("Expected colon ':'", ":", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+                keyValueElement.setColonElement(expectedColon);
                 return mapElement;
             }
 
@@ -366,8 +512,12 @@ public class Parser {
             Element valueElement = parseValue(scanner, null, itemType);
 
             if (valueElement == null) {
+                Element expectedValueElement = new ExpectedElement("Expected map value", "map value", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+                keyValueElement.setValueElement(expectedValueElement);
                 return mapElement;
             }
+
+            keyValueElement.setValueElement(valueElement);
 
             if (scanner.skipWhitespaces() == Scanner.NEW_LINE) {
                 if (!scanner.nextLine()) {
@@ -386,14 +536,26 @@ public class Parser {
             }
 
             if (!scanner.expect(',', "Comma ','")) {
+                Element expectedComma = new ExpectedElement("Expected comma ','", ",", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+                current.setNext(expectedComma);
                 return mapElement;
             }
 
+
+            Element comma = new Element(",", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+            current.setNext(comma);
+            comma.setPrevious(current);
+            current = comma;
         }
 
         if (!scanner.expect('}', "Right Curly Bracket '}")) {
+            Element expectedRightBracket = new ExpectedElement("Right Curly Bracket '}'", "}", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+            mapElement.setRightBrace(expectedRightBracket);
             return mapElement;
         }
+
+        Element rightCurlyBracket = new Element("}", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+        mapElement.setLeftBrace(rightCurlyBracket);
 
         return mapElement;
     }
