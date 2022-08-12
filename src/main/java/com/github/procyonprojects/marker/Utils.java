@@ -1,6 +1,5 @@
 package com.github.procyonprojects.marker;
 
-import b.h.S;
 import com.github.procyonprojects.marker.comment.Comment;
 import com.github.procyonprojects.marker.metadata.Target;
 import com.goide.psi.GoPackageClause;
@@ -189,5 +188,34 @@ public class Utils {
 
         String[] nameFieldParts = markerComment.split("=", 2);
         return nameFieldParts[0].stripTrailing();
+    }
+
+    public static int countLeadingSpace(String str) {
+        int spaceCount = 0;
+
+        for(char c : str.toCharArray()) {
+            if (c == ' ') {
+                spaceCount++;
+            } else {
+                break;
+            }
+        }
+
+        return spaceCount;
+    }
+
+    public static int countTrailingSpaces(String str) {
+        int spaceCount = 0;
+        char[] chars = str.toCharArray();
+
+        for (int i = chars.length - 1; i >= 0; i--) {
+            if (chars[i] == ' ') {
+                spaceCount++;
+            } else {
+                break;
+            }
+        }
+
+        return spaceCount;
     }
 }

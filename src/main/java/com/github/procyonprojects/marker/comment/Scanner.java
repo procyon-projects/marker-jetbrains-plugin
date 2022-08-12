@@ -1,8 +1,11 @@
 package com.github.procyonprojects.marker.comment;
 
+import com.github.procyonprojects.marker.Utils;
 import com.github.procyonprojects.marker.element.Element;
 import com.github.procyonprojects.marker.metadata.Definition;
+import com.intellij.openapi.util.TextRange;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -29,6 +32,7 @@ public class Scanner {
     private int firstLineStartPosition;
 
     public Scanner(Definition definition, Comment comment) {
+        this.tokenList = new ArrayList<>();
         this.lines = comment.getLines();
 
         final Optional<Comment.Line> firstLine = comment.firstLine();
@@ -140,6 +144,18 @@ public class Scanner {
         return true;
     }
 
+    public void setLineIndex(int lineIndex) {
+        this.lineIndex = lineIndex;
+
+        if (lineIndex == 0) {
+            this.line = firstLineText.toCharArray();
+        } else if (lineIndex == lines.size() - 1) {
+            this.line = lines.get(lineIndex).getText().toCharArray();
+        } else {
+            this.line = lines.get(lineIndex).getText().substring(0, lines.get(lineIndex).getText().length() - 2).toCharArray();
+        }
+    }
+
     public boolean expect(int expected, String description) {
         int token = scan();
 
@@ -162,6 +178,10 @@ public class Scanner {
         }
 
         return "";
+    }
+
+    public List<Element> tokens() {
+        return tokenList;
     }
 
     public int skipWhitespaces() {
@@ -189,10 +209,6 @@ public class Scanner {
         return lineIndex;
     }
 
-    public void setLineIndex(int lineIndex) {
-        this.lineIndex = lineIndex;
-    }
-
     public int lineLength() {
         return line.length;
     }
@@ -201,8 +217,16 @@ public class Scanner {
         return startPosition;
     }
 
+    public void  setStartPosition(int startPosition) {
+        this.startPosition = startPosition;
+    }
+
     public int endPosition() {
         return endPosition;
+    }
+
+    public void setEndPosition(int endPosition) {
+        this.endPosition = endPosition;
     }
 
     public int searchIndex() {
@@ -211,6 +235,10 @@ public class Scanner {
 
     public void setSearchIndex(int searchIndex) {
         this.searchIndex = searchIndex;
+    }
+
+    public TextRange originalPosition() {
+        return new TextRange(originalStartPosition(), originalStartPosition() + token().length());
     }
 
     public int originalStartPosition() {
@@ -241,6 +269,17 @@ public class Scanner {
         String value = token();
         Element element;
 
+        if (tokenList.isEmpty()) {
+            element = new Element(value, originalPosition());
+        } else {
+            int spaceCount = Utils.countLeadingSpace(value);
+            element = new Element(value.stripLeading(), new TextRange(originalStartPosition() + spaceCount, originalEndPosition()));
+            final Element previous = tokenList.get(tokenList.size()-1);
+            previous.setNext(element);
+            element.setPrevious(previous);
+        }
+
+        tokenList.add(element);
     }
 
     public int scanString(int quote) {
@@ -310,4 +349,5 @@ public class Scanner {
         this.current = character;
         return character;
     }
+
 }
