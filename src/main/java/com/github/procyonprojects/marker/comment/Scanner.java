@@ -49,13 +49,13 @@ public class Scanner {
             markerEndIndex = markerStartIndex + markerName.length() + 1;
         }
 
-        this.firstLineText = firstLine.get().getText().stripTrailing().substring(markerEndIndex+1);
+        this.firstLineText = firstLine.get().getText().stripTrailing().substring(markerEndIndex);
 
         if (comment.getLines().size() > 1) {
             this.firstLineText = this.firstLineText.substring(0, this.firstLineText.length() - 2);
         }
 
-        this.firstLineStartPosition = firstLineStartOffset + markerStartIndex;
+        this.firstLineStartPosition = firstLineStartOffset + markerEndIndex;
 
         this.line = this.firstLineText.toCharArray();
         this.current = IDENTIFIER;
@@ -287,7 +287,7 @@ public class Scanner {
         startPosition = searchIndex;
         int character = next();
 
-        tokenList.clear();
+        tokenList = new ArrayList<>();
 
         while (character != quote) {
             if (character < 0) {

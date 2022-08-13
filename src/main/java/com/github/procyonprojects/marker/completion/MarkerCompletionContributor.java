@@ -31,7 +31,7 @@ public class MarkerCompletionContributor extends CompletionContributor {
 
     private static final DefinitionProvider definitionProvider = ApplicationManager.getApplication().getService(DefinitionProvider.class);
 
-    private final static PatternCondition<PsiElement> IS_MARKER_COMMENT = new PatternCondition<>(MarkerCompletionContributor.class.getName()) {
+    private final static PatternCondition<PsiElement> IS_MARKER_COMMENT = new PatternCondition<>("") {
         @Override
         public boolean accepts(@NotNull PsiElement element, ProcessingContext context) {
             if (Utils.isMarkerCommentElement(element)) {
@@ -44,6 +44,14 @@ public class MarkerCompletionContributor extends CompletionContributor {
 
     public MarkerCompletionContributor() {
         extend(CompletionType.BASIC, PlatformPatterns.psiElement().with(IS_MARKER_COMMENT), new CompletionProvider<>() {
+            @Override
+            protected void addCompletions(@NotNull CompletionParameters parameters, @NotNull ProcessingContext context, @NotNull CompletionResultSet result) {
+                addMarkerCompletions(parameters, context, result);
+                addParameterCompletions(parameters, context, result);
+                result.stopHere();
+            }
+        });
+        extend(CompletionType.SMART, PlatformPatterns.psiElement().with(IS_MARKER_COMMENT), new CompletionProvider<>() {
             @Override
             protected void addCompletions(@NotNull CompletionParameters parameters, @NotNull ProcessingContext context, @NotNull CompletionResultSet result) {
                 addMarkerCompletions(parameters, context, result);

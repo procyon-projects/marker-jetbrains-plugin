@@ -4,6 +4,7 @@ import com.github.procyonprojects.marker.metadata.Definition;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MarkerElement extends Element {
 
@@ -36,6 +37,9 @@ public class MarkerElement extends Element {
     }
 
     public List<String> getParameters() {
-        return null;
+        return getParameterElements()
+                .stream()
+                .map(parameterElement -> parameterElement.getName() == null ? "Value" : parameterElement.getName().getText())
+                .collect(Collectors.toList());
     }
 }

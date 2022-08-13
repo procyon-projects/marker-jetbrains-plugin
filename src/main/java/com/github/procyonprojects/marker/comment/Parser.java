@@ -1,6 +1,5 @@
 package com.github.procyonprojects.marker.comment;
 
-import b.h.P;
 import com.github.procyonprojects.marker.Utils;
 import com.github.procyonprojects.marker.element.*;
 import com.github.procyonprojects.marker.metadata.Definition;
@@ -8,6 +7,7 @@ import com.github.procyonprojects.marker.metadata.Parameter;
 import com.github.procyonprojects.marker.metadata.Type;
 import com.github.procyonprojects.marker.metadata.TypeInfo;
 import com.intellij.openapi.util.TextRange;
+import org.apache.commons.collections.CollectionUtils;
 
 import java.util.*;
 
@@ -45,7 +45,7 @@ public class Parser {
 
         Element currentElement = markerElement;
 
-        if (scanner.peek() != Scanner.EOF) {
+        if (CollectionUtils.isNotEmpty(definition.getParameters()) && scanner.peek() != Scanner.EOF) {
             while (true) {
                 int character = scanner.skipWhitespaces();
 
@@ -58,7 +58,7 @@ public class Parser {
                     continue;
                 }
 
-                final ParameterElement parameterElement = new ParameterElement();
+                ParameterElement parameterElement = new ParameterElement();
                 currentElement.setNext(parameterElement);
                 parameterElement.setPrevious(currentElement);
                 currentElement = parameterElement;
@@ -80,6 +80,25 @@ public class Parser {
                     }
                 } else {
                     argumentName = scanner.token();
+                    parameterElement.setName(new Element(argumentName, scanner.originalPosition()));
+
+                    character = scanner.skipWhitespaces();
+
+                    if (character == Scanner.EOF) {
+                        break;
+                    } else if (character == Scanner.NEW_LINE) {
+                        if (!scanner.nextLine()) {
+                            break;
+                        }
+                        character = scanner.skipWhitespaces();
+                    }
+
+                    if (!scanner.expect('=', "Equal Sign")) {
+                        parameterElement.setEqualSign(new ExpectedElement("Expected equal '='", "=", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1)));
+                        break;
+                    } else {
+                        parameterElement.setEqualSign(new Element("=", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1)));
+                    }
                 }
 
                 character = scanner.skipWhitespaces();
@@ -116,7 +135,7 @@ public class Parser {
                 TypeInfo typeInfo = parameter.get().getType();
                 parameterElement.setTypeInfo(typeInfo);
 
-                final Element value = parseValue(scanner, parameter.get(), typeInfo);
+                Element value = parseValue(scanner, parameter.get(), typeInfo);
                 parameterElement.setValue(value);
 
                 scanner.skipWhitespaces();
@@ -130,13 +149,13 @@ public class Parser {
                 }
 
                 if (!scanner.expect(',', "Comma")) {
-                    final ExpectedElement expectedComma = new ExpectedElement("Expected comma ','", ",", scanner.originalPosition());
+                    ExpectedElement expectedComma = new ExpectedElement("Expected comma ','", ",", scanner.originalPosition());
                     currentElement.setNext(expectedComma);
                     expectedComma.setPrevious(currentElement);
                     break;
                 }
 
-                final Element commaElement = new Element(",", scanner.originalPosition());
+                Element commaElement = new Element(",", scanner.originalPosition());
                 currentElement.setNext(commaElement);
                 commaElement.setPrevious(currentElement);
                 currentElement = commaElement;
@@ -232,14 +251,14 @@ public class Parser {
     }
 
     private Element parseStringValue(Scanner scanner) {
-        final int token = scanner.scan();
+        int token = scanner.scan();
 
         if (token == Scanner.STRING_VALUE) {
             return new StringElement(scanner.tokens());
         }
 
-        final int startPosition = scanner.startPosition();
-        final String initialValue = scanner.token();
+        int startPosition = scanner.startPosition();
+        String initialValue = scanner.token();
 
         int character = scanner.peek();
 
@@ -255,7 +274,7 @@ public class Parser {
             }
         }
 
-        final int endPosition = scanner.endPosition();
+        int endPosition = scanner.endPosition();
         String strValue = "";
 
         try {
