@@ -226,6 +226,7 @@ public class MarkerCompletionContributor extends CompletionContributor {
                     final Element nameElement = parameterElement.getName();
                     final Element equalSignElement = parameterElement.getEqualSign();
                     final Element valueElement = parameterElement.getValue();
+                    final TypeInfo typeInfo = parameterElement.getTypeInfo();
 
                     if (equalSignElement != null && equalSignElement.getRange().getStartOffset() <= parameters.getOffset()) {
                         if (parameterElement.getTypeInfo().getActualType() == Type.AnyType || valueElement instanceof ExpectedElement) {
@@ -236,29 +237,37 @@ public class MarkerCompletionContributor extends CompletionContributor {
                             } else if (parameterElement.getNext() == null || parameterElement.getNext().getRange().getStartOffset() >= parameters.getOffset()) {
                                 elements.addAll(fillParameterValues(parameterElement.getTypeInfo()));
                             }
-                        } else if (valueElement instanceof MapElement) {
+                        } else if (valueElement instanceof MapElement || typeInfo.getActualType() == Type.MapType) {
                             final MapElement mapElement = (MapElement) valueElement;
 
                             if (mapElement.getLeftBrace() instanceof ExpectedElement && mapElement.getLeftBrace() == null && mapElement.getLeftBrace().getRange().getEndOffset() > parameters.getOffset()) {
                                 elements.add(getEmptyMapValue());
                             }
 
-                        } else if (valueElement instanceof SliceElement) {
+                        } else if (valueElement instanceof SliceElement || typeInfo.getActualType() == Type.SliceType) {
                             final SliceElement sliceElement = (SliceElement) valueElement;
 
                             final Set<String> usedItems = new HashSet<>();
-                            sliceElement.getItems().forEach(element -> {
-                                usedItems.add(element.getText());
-                            });
 
-                            if (sliceElement.getLeftBrace() == null && sliceElement.getParameter() == null
-                                    && (parameterElement.getNext() == null || parameterElement.getNext().getRange().getEndOffset() > parameters.getOffset())) {
-                                fillSliceItemValues(sliceElement.getParameter(), usedItems, true);
-                            } else if (sliceElement.getLeftBrace() != null && sliceElement.getRightBrace() != null
-                                    && sliceElement.getLeftBrace().getRange().getStartOffset() < parameters.getOffset()
-                                    && sliceElement.getRightBrace().getRange().getStartOffset() >= parameters.getOffset()) {
-                                fillSliceItemValues(sliceElement.getParameter(), usedItems, false);
+                            if(sliceElement == null) {
+                                elements.addAll(fillSliceItemValues(parameterElement.getParameter(), usedItems, true));
+                            } else {
+                                sliceElement.getItems().forEach(element -> {
+                                    usedItems.add(element.getText());
+                                });
+
+                                if (sliceElement.getLeftBrace() == null && sliceElement.getRightBrace() == null
+                                        && (parameterElement.getNext() == null || parameterElement.getNext().getRange().getEndOffset() > parameters.getOffset())) {
+                                    elements.addAll(fillSliceItemValues(sliceElement.getParameter(), usedItems, usedItems.isEmpty()));
+                                } else if (sliceElement.getLeftBrace() != null && sliceElement.getRightBrace() != null
+                                        && sliceElement.getLeftBrace().getRange().getStartOffset() < parameters.getOffset()
+                                        && sliceElement.getRightBrace().getRange().getStartOffset() >= parameters.getOffset()) {
+                                    elements.addAll(fillSliceItemValues(sliceElement.getParameter(), usedItems, false));
+                                }
                             }
+
+                        } else if (parameterElement.getNext() == null || parameterElement.getNext().getRange().getStartOffset() >= parameters.getOffset()) {
+                            elements.addAll(fillParameterValues(parameterElement.getTypeInfo()));
                         }
                     }
                 }

@@ -233,8 +233,14 @@ public class Scanner {
         return searchIndex;
     }
 
-    public void setSearchIndex(int searchIndex) {
-        this.searchIndex = searchIndex;
+    public void setSearchIndex(int index) {
+        if (index >= lineLength()) {
+            this.searchIndex = lineLength();
+            return;
+        }
+
+        this.searchIndex = index;
+        current = line[index];
     }
 
     public TextRange originalPosition() {

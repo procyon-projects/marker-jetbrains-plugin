@@ -2,6 +2,7 @@ package com.github.procyonprojects.marker.element;
 
 import com.github.procyonprojects.marker.metadata.Parameter;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class SliceElement extends Element {
@@ -35,6 +36,12 @@ public class SliceElement extends Element {
     }
 
     public List<Element> getItems() {
-        return null;
+        final List<Element> items = new ArrayList<>();
+        Element current = getNext();
+        while (current != null) {
+            items.add(current);
+            current = current.getNext();
+        }
+        return items;
     }
 }
