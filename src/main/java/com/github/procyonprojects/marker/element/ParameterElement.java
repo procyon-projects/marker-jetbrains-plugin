@@ -1,5 +1,6 @@
 package com.github.procyonprojects.marker.element;
 
+import com.github.procyonprojects.marker.metadata.Parameter;
 import com.github.procyonprojects.marker.metadata.TypeInfo;
 
 public class ParameterElement extends Element {
@@ -8,6 +9,7 @@ public class ParameterElement extends Element {
     private Element equalSign;
     private Element value;
     private TypeInfo typeInfo;
+    private Parameter parameter;
 
     public Element getName() {
         return name;
@@ -39,5 +41,13 @@ public class ParameterElement extends Element {
 
     public void setTypeInfo(TypeInfo typeInfo) {
         this.typeInfo = typeInfo;
+    }
+
+    public Parameter getParameter() {
+        return parameter;
+    }
+
+    public void setParameter(Parameter parameter) {
+        this.parameter = parameter;
     }
 }

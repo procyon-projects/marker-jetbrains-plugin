@@ -1,5 +1,6 @@
 package com.github.procyonprojects.marker.element;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class MapElement extends Element {
@@ -24,6 +25,12 @@ public class MapElement extends Element {
     }
 
     public List<Element> getItems() {
-        return null;
+        final List<Element> items = new ArrayList<>();
+        Element current = getNext();
+        while (current != null) {
+            items.add(current);
+            current = current.getNext();
+        }
+        return items;
     }
 }

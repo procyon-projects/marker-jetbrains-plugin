@@ -61,8 +61,16 @@ public class MarkerCommentHighlighter {
         final Parameter parameter = element.getParameter();
         final List<Enum> enumList = parameter.getEnumValues();
 
-        final List<Element> items = new ArrayList<>(); // TODO
+        final List<Element> items = element.getItems();
         final Set<String> usedItems = new HashSet<>();
+
+        if (element.getLeftBrace() != null) {
+            highlightElement(element.getLeftBrace(), containerTextRange, holder, false);
+        }
+
+        if (element.getRightBrace() != null) {
+            highlightElement(element.getRightBrace(), containerTextRange, holder, false);
+        }
 
         for (Element item : items) {
             final String text = item.getText();
@@ -87,6 +95,14 @@ public class MarkerCommentHighlighter {
         final List<Element> items = element.getItems();
         final Set<String> usedMapKeys = new HashSet<>();
 
+        if (element.getLeftBrace() != null) {
+            highlightElement(element.getLeftBrace(), containerTextRange, holder, false);
+        }
+
+        if (element.getRightBrace() != null) {
+            highlightElement(element.getRightBrace(), containerTextRange, holder, false);
+        }
+
         for (Element item : items) {
             highlightElement(item, containerTextRange, holder, false);
 
@@ -106,7 +122,7 @@ public class MarkerCommentHighlighter {
                         }
                     }
 
-                    usedMapKeys.add(keyValueElement.getText());
+                    usedMapKeys.add(keyValueElement.getKeyElement().getText());
                 }
 
             }
@@ -176,9 +192,9 @@ public class MarkerCommentHighlighter {
             return;
         }
 
-        holder.newAnnotation(HighlightSeverity.ERROR, "")
+        holder.newAnnotation(HighlightSeverity.ERROR, element.getMessage())
                 .range(element.getRange())
-                .highlightType(ProblemHighlightType.LIKE_UNUSED_SYMBOL)
+                .highlightType(ProblemHighlightType.LIKE_UNKNOWN_SYMBOL)
                 .create();
     }
 

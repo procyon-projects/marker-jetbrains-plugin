@@ -101,17 +101,6 @@ public class Parser {
                     }
                 }
 
-                character = scanner.skipWhitespaces();
-
-                if (character == Scanner.EOF) {
-                    break;
-                } else if (character == Scanner.NEW_LINE) {
-                    if (!scanner.nextLine()) {
-                        break;
-                    }
-                    character = scanner.skipWhitespaces();
-                }
-
                 Optional<Parameter> parameter = definition.getParameter(argumentName);
 
                 if (parameter.isEmpty()) {
@@ -121,20 +110,19 @@ public class Parser {
                     parameterElement.setName(new UnresolvedElement(String.format("Unresolved parameter %s", argumentName), argumentName, scanner.originalPosition()));
                 }
 
+                TypeInfo typeInfo = parameter.get().getType();
+                parameterElement.setTypeInfo(typeInfo);
+                parameterElement.setParameter(parameter.get());
+
                 seenMap.put(argumentName, parameter.get());
 
                 if (scanner.peek() == Scanner.EOF) {
-
                     break;
                 } else if (scanner.peek() == Scanner.NEW_LINE) {
                     if (!scanner.nextLine()) {
                         break;
                     }
                 }
-
-                TypeInfo typeInfo = parameter.get().getType();
-                parameterElement.setTypeInfo(typeInfo);
-
                 Element value = parseValue(scanner, parameter.get(), typeInfo);
                 parameterElement.setValue(value);
 
@@ -185,7 +173,7 @@ public class Parser {
             case SliceType:
                 return parseSliceValues(scanner, parameter, typeInfo.getItemType());
             case MapType:
-                return parseMapValues(scanner, typeInfo.getItemType());
+                return parseMapValues(scanner, parameter, typeInfo.getItemType());
             case AnyType:
                 TypeInfo inferredType = inferType(scanner, false);
                 return parseValue(scanner, parameter, inferredType);
@@ -466,7 +454,7 @@ public class Parser {
         return sliceElement;
     }
 
-    private Element parseMapValues(Scanner scanner, TypeInfo itemType) {
+    private Element parseMapValues(Scanner scanner, Parameter parameter, TypeInfo itemType) {
         final MapElement mapElement = new MapElement();
 
         if (!scanner.expect('{', "Left Curly Bracket")) {
@@ -522,13 +510,16 @@ public class Parser {
                 return mapElement;
             }
 
+            Element colonElement = new Element(":", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+            keyValueElement.setColonElement(colonElement);
+
             if (scanner.skipWhitespaces() == Scanner.NEW_LINE) {
                 if (!scanner.nextLine()) {
                     return mapElement;
                 }
             }
 
-            Element valueElement = parseValue(scanner, null, itemType);
+            Element valueElement = parseValue(scanner, parameter, itemType);
 
             if (valueElement == null) {
                 Element expectedValueElement = new ExpectedElement("Expected map value", "map value", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
@@ -574,7 +565,7 @@ public class Parser {
         }
 
         Element rightCurlyBracket = new Element("}", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
-        mapElement.setLeftBrace(rightCurlyBracket);
+        mapElement.setRightBrace(rightCurlyBracket);
 
         return mapElement;
     }

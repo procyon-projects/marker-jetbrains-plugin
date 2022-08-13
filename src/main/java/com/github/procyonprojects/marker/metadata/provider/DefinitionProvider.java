@@ -36,6 +36,7 @@ public class DefinitionProvider {
         parameters.add(new Parameter("Processor", new TypeInfo(Type.StringType), "The name of the marker processor"));
         parameters.add(new Parameter("Repeatable", new TypeInfo(Type.BooleanType), "Whether the marker is repeatable", Boolean.TRUE));
         parameters.add(new Parameter("SyntaxFree", new TypeInfo(Type.BooleanType), "Whether the marker is syntax-free", Boolean.FALSE));
+        parameters.add(new Parameter("Test", new TypeInfo(Type.MapType, new TypeInfo(Type.AnyType)), "Whether the marker is syntax-free", Boolean.FALSE));
 
         final List<com.github.procyonprojects.marker.metadata.Enum> targetList = new ArrayList<>();
         targetList.add(new com.github.procyonprojects.marker.metadata.Enum("PACKAGE_LEVEL"));
