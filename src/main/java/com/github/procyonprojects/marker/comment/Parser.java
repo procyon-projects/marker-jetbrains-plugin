@@ -1,7 +1,5 @@
 package com.github.procyonprojects.marker.comment;
 
-import b.e.E;
-import b.h.T;
 import com.github.procyonprojects.marker.Utils;
 import com.github.procyonprojects.marker.element.*;
 import com.github.procyonprojects.marker.metadata.Definition;
