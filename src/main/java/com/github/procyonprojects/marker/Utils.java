@@ -97,7 +97,7 @@ public class Utils {
             while (element.getText().endsWith(" \\") && element.getNextSibling() instanceof PsiWhiteSpace && element.getNextSibling().getText().equals("\n")) {
                 element = element.getNextSibling();
 
-                while (element instanceof PsiWhiteSpace && StringUtils.countMatches(element.getText(), '\t') >= 1) {
+                while (element instanceof PsiWhiteSpace && (StringUtils.countMatches(element.getText(), '\t') >= 1 ||  StringUtils.countMatches(element.getText(), '\n') >= 1)) {
                     element = element.getNextSibling();
                 }
 

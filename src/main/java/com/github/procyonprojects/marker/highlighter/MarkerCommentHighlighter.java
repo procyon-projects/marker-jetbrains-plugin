@@ -183,14 +183,12 @@ public class MarkerCommentHighlighter {
     }
 
     private void highlightMarkerElement(MarkerElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
-        if (!containerTextRange.contains(element.getRange())) {
-            return;
+        if (containerTextRange.contains(element.getRange())) {
+            holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
+                    .range(element.getRange())
+                    .textAttributes(createTextAttribute("MARKER_NAME"))
+                    .create();
         }
-
-        holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
-                .range(element.getRange())
-                .textAttributes(createTextAttribute("MARKER_NAME"))
-                .create();
 
         final List<ParameterElement> parameterElements = element.getParameterElements();
         final Set<String> seen = new HashSet<>();
@@ -206,7 +204,7 @@ public class MarkerCommentHighlighter {
 
                     if (containerTextRange.contains(nameElement.getRange())) {
 
-                        if (seen.contains(nameElement.getText())) {
+                        if (!seen.contains(nameElement.getText())) {
                             holder.newSilentAnnotation(HighlightSeverity.INFORMATION)
                                     .range(nameElement.getRange())
                                     .textAttributes(createTextAttribute("MARKER_PARAMETER_NAME"))
