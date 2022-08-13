@@ -2,49 +2,49 @@
 <list>
     <option name="MARKER_NAME">
         <value>
-            <option name="FOREGROUND" value="93A629"/>
+            <option name="FOREGROUND" value="006666"/>
             <option name="FONT_TYPE" value="3"/>
         </value>
     </option>
     <option name="NEW_LINE_CHARACTER">
         <value>
-            <option name="FOREGROUND" value="93A629"/>
+            <option name="FOREGROUND" value="006666"/>
             <option name="FONT_TYPE" value="3"/>
         </value>
     </option>
     <option name="INTEGER_VALUE">
         <value>
-            <option name="FOREGROUND" value="5897BB"/>
+            <option name="FOREGROUND" value="0000FF"/>
             <option name="FONT_TYPE" value="2"/>
         </value>
     </option>
     <option name="BOOLEAN_VALUE">
         <value>
-            <option name="FOREGROUND" value="C7773E"/>
+            <option name="FOREGROUND" value="660000"/>
             <option name="FONT_TYPE" value="2"/>
         </value>
     </option>
     <option name="STRING_VALUE">
         <value>
-            <option name="FOREGROUND" value="6A8759"/>
+            <option name="FOREGROUND" value="08000"/>
             <option name="FONT_TYPE" value="2"/>
         </value>
     </option>
     <option name="STRING_KEY">
         <value>
-            <option name="FOREGROUND" value="9876AA"/>
+            <option name="FOREGROUND" value="660E7A"/>
             <option name="FONT_TYPE" value="2"/>
         </value>
     </option>
     <option name="MARKER_PARAMETER_NAME">
         <value>
-            <option name="FOREGROUND" value="A1A1A1"/>
+            <option name="FOREGROUND" value="000000"/>
             <option name="FONT_TYPE" value="2"/>
         </value>
     </option>
     <option name="BRACES_AND_OPERATORS">
         <value>
-            <option name="FOREGROUND" value="A1A1A1"/>
+            <option name="FOREGROUND" value="000000"/>
             <option name="FONT_TYPE" value="2"/>
         </value>
     </option>
