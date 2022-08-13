@@ -315,6 +315,15 @@ public class MarkerCommentHighlighter {
         }
     }
 
+    private void highlightUnresolvedMarker(Element element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
+        if (containerTextRange.contains(element.getRange())) {
+            holder.newAnnotation(HighlightSeverity.ERROR, "Unresolved marker")
+                    .range(element.getRange())
+                    .highlightType(ProblemHighlightType.LIKE_UNKNOWN_SYMBOL)
+                    .create();
+        }
+    }
+
     public void highlight(Comment comment, PsiElement element, AnnotationHolder holder) {
         final TargetInfo targetInfo = Utils.findTarget((PsiComment) element);
         if (targetInfo.getTarget() == Target.INVALID) {
@@ -331,6 +340,9 @@ public class MarkerCommentHighlighter {
         if (definition.isEmpty()) {
             definition = definitionProvider.find(targetInfo.getTarget(), markerName);
             if (definition.isEmpty()) {
+                int startIndex = firstLine.startOffset() + firstLine.getText().indexOf("+" + anonymousName);
+                int endIndex = startIndex + anonymousName.length() + 1;
+                highlightUnresolvedMarker(new Element("+" + anonymousName, new TextRange(startIndex, endIndex)), element.getTextRange(), holder);
                 return;
             }
         }
