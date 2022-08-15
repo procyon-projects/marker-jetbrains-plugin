@@ -64,15 +64,27 @@ public class Parser {
                 currentElement = parameterElement;
 
                 String argumentName = "";
+                Optional<Parameter> parameter = Optional.empty();
 
                 if (!scanner.expect(Scanner.IDENTIFIER, "Value or Argument Name")) {
                     if (isValueSyntax) {
                         if (!"=".equals(scanner.token()) && seenMap.size() == 0) {
                             parameterElement.setEqualSign(new ExpectedElement("Expected equal '='", "=", scanner.originalPosition()));
                             break;
+                        } else if (",".equals(scanner.token())) {
+                            parameterElement.setName(new ExpectedElement("Expected argument name", null, scanner.originalPosition()));
+                            break;
                         } else {
                             parameterElement.setEqualSign(new Element("=", scanner.originalPosition()));
                             argumentName = "Value";
+                            parameter = definition.getParameter(argumentName);
+
+                            if (parameter.isEmpty()) {
+                                Parameter anyParameter = new Parameter();
+                                anyParameter.setType(TypeInfo.ANY_TYPE_INFO);
+                                parameter = Optional.of(anyParameter);
+                                parameterElement.setName(new UnresolvedElement(String.format("Unresolved parameter %s", argumentName), argumentName, scanner.originalPosition()));
+                            }
                         }
                     } else {
                         parameterElement.setName(new ExpectedElement("Expected argument name", null, scanner.originalPosition()));
@@ -81,6 +93,15 @@ public class Parser {
                 } else {
                     argumentName = scanner.token();
                     parameterElement.setName(new Element(argumentName, scanner.originalPosition()));
+
+                    parameter = definition.getParameter(argumentName);
+
+                    if (parameter.isEmpty()) {
+                        Parameter anyParameter = new Parameter();
+                        anyParameter.setType(TypeInfo.ANY_TYPE_INFO);
+                        parameter = Optional.of(anyParameter);
+                        parameterElement.setName(new UnresolvedElement(String.format("Unresolved parameter %s", argumentName), argumentName, scanner.originalPosition()));
+                    }
 
                     character = scanner.skipWhitespaces();
 
@@ -101,15 +122,6 @@ public class Parser {
                     }
                 }
 
-                Optional<Parameter> parameter = definition.getParameter(argumentName);
-
-                if (parameter.isEmpty()) {
-                    Parameter anyParameter = new Parameter();
-                    anyParameter.setType(TypeInfo.ANY_TYPE_INFO);
-                    parameter = Optional.of(anyParameter);
-                    parameterElement.setName(new UnresolvedElement(String.format("Unresolved parameter %s", argumentName), argumentName, scanner.originalPosition()));
-                }
-
                 TypeInfo typeInfo = parameter.get().getType();
                 parameterElement.setTypeInfo(typeInfo);
                 parameterElement.setParameter(parameter.get());
@@ -124,7 +136,13 @@ public class Parser {
                     }
                 }
                 Element value = parseValue(scanner, parameter.get(), typeInfo);
-                parameterElement.setValue(value);
+
+                if (value == null) {
+                    parameterElement.setValue(new ExpectedElement("Expected argument value", null, new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1)));
+                    break;
+                } else {
+                    parameterElement.setValue(value);
+                }
 
                 scanner.skipWhitespaces();
 
@@ -527,7 +545,18 @@ public class Parser {
                 return mapElement;
             }
 
-            keyValueElement.setValueElement(valueElement);
+            if (valueElement instanceof StringElement) {
+                StringElement stringElement = (StringElement) valueElement;
+                String text = stringElement.getText();
+                if (!text.startsWith("\"") && !text.startsWith("'") && !text.startsWith("`")) {
+                    Element invalidStringElement = new InvalidElement("Invalid string value", "invalid", scanner.originalPosition());
+                    keyValueElement.setValueElement(invalidStringElement);
+                } else {
+                    keyValueElement.setValueElement(valueElement);
+                }
+            } else {
+                keyValueElement.setValueElement(valueElement);
+            }
 
             if (scanner.skipWhitespaces() == Scanner.NEW_LINE) {
                 if (!scanner.nextLine()) {
@@ -553,8 +582,8 @@ public class Parser {
 
 
             Element comma = new Element(",", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
-            current.setNext(comma);
-            comma.setPrevious(current);
+            keyValueElement.setNext(comma);
+            comma.setPrevious(keyValueElement);
             current = comma;
         }
 
@@ -562,6 +591,15 @@ public class Parser {
             Element expectedRightBracket = new ExpectedElement("Right Curly Bracket '}'", "}", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
             mapElement.setRightBrace(expectedRightBracket);
             return mapElement;
+        }
+
+        if (",".equals(scanner.token())) {
+            Element expectedMapKeyElement = new ExpectedElement("Expected map key", "map value", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
+
+            if (current != null && current.getPrevious() instanceof KeyValueElement) {
+                expectedMapKeyElement.setPrevious(current.getPrevious());
+                current.getPrevious().setNext(expectedMapKeyElement);
+            }
         }
 
         Element rightCurlyBracket = new Element("}", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));

@@ -108,13 +108,13 @@ public class MarkerCompletionContributor extends CompletionContributor {
 
             Optional<Parameter> defaultParameter = definition.getParameters().stream().filter(parameter -> "Value".equals(parameter.getName())).findFirst();
             defaultParameter.ifPresent(parameter -> {
-                elements.add(LookupElementBuilder.create(definition.getName() + "=" + "")
+                elements.add(LookupElementBuilder.create(definition.getName() + "=" + getParameterDefaultValue(parameter))
                         .withPresentableText(definition.getName())
                         .withItemTextForeground(JBColor.DARK_GRAY)
                         .bold()
                         .withIcon(Icons.MarkerIcon)
                         .withTailText(" " + definition.getPkgId())
-                        .withTypeText("Value Shorthand Syntax | " + "any")
+                        .withTypeText("Value Shorthand Syntax | " + parameter.getType().getPresentableText())
                         .withTypeIconRightAligned(true));
             });
         });
@@ -230,17 +230,26 @@ public class MarkerCompletionContributor extends CompletionContributor {
 
                     if (equalSignElement != null && equalSignElement.getRange().getStartOffset() <= parameters.getOffset()) {
                         if (parameterElement.getTypeInfo().getActualType() == Type.AnyType || valueElement instanceof ExpectedElement) {
-                            if (",".equals(valueElement.getText())) {
+                            if (valueElement != null && ",".equals(valueElement.getText())) {
                                 if (valueElement.getRange().getEndOffset() > parameters.getOffset()) {
                                     elements.addAll(fillParameterValues(parameterElement.getTypeInfo()));
                                 }
                             } else if (parameterElement.getNext() == null || parameterElement.getNext().getRange().getStartOffset() >= parameters.getOffset()) {
+                                if (valueElement instanceof SliceElement) {
+                                    SliceElement sliceElement = (SliceElement) valueElement;
+                                    if (sliceElement.getLeftBrace() != null || sliceElement.getRightBrace() != null || sliceElement.getItems().size() != 0) {
+                                        current = current.getNext();
+                                        continue;
+                                    }
+                                }
                                 elements.addAll(fillParameterValues(parameterElement.getTypeInfo()));
                             }
                         } else if (valueElement instanceof MapElement || typeInfo.getActualType() == Type.MapType) {
                             final MapElement mapElement = (MapElement) valueElement;
 
-                            if (mapElement.getLeftBrace() instanceof ExpectedElement && mapElement.getLeftBrace() == null && mapElement.getLeftBrace().getRange().getEndOffset() > parameters.getOffset()) {
+                            if (mapElement == null) {
+                                elements.add(getEmptyMapValue());
+                            } else if (mapElement.getLeftBrace() instanceof ExpectedElement && mapElement.getLeftBrace() == null && mapElement.getLeftBrace().getRange().getEndOffset() > parameters.getOffset()) {
                                 elements.add(getEmptyMapValue());
                             }
 
@@ -267,6 +276,10 @@ public class MarkerCompletionContributor extends CompletionContributor {
                             }
 
                         } else if (parameterElement.getNext() == null || parameterElement.getNext().getRange().getStartOffset() >= parameters.getOffset()) {
+                            if (valueElement instanceof StringElement && StringUtils.isNotEmpty(valueElement.getText())) {
+                                current = current.getNext();
+                                continue;
+                            }
                             elements.addAll(fillParameterValues(parameterElement.getTypeInfo()));
                         }
                     }
@@ -294,7 +307,7 @@ public class MarkerCompletionContributor extends CompletionContributor {
                 .bold()
                 .withIcon(parameter.isRequired() ? AllIcons.Nodes.PropertyWrite : AllIcons.Nodes.Property)
                 .withTailText(tailTextBuilder.toString())
-                .withTypeText("any")
+                .withTypeText(parameter.getType().getPresentableText())
                 .withTypeIconRightAligned(true);
     }
 
@@ -382,8 +395,8 @@ public class MarkerCompletionContributor extends CompletionContributor {
     }
 
     private LookupElementBuilder getEmptyMapValue() {
-        return LookupElementBuilder.create("{}")
-                .withPresentableText("{}")
+        return LookupElementBuilder.create("{key:\"value\"}")
+                .withPresentableText("{key:\"value\"}")
                 .withItemTextForeground(JBColor.DARK_GRAY)
                 .bold()
                 .withIcon(Icons.MapIcon)

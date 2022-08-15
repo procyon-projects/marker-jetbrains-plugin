@@ -3,8 +3,10 @@ package com.github.procyonprojects.marker.metadata;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.github.procyonprojects.marker.metadata.deserializer.TypeInfoDeserializer;
+import org.apache.commons.collections.CollectionUtils;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class Parameter {
@@ -97,6 +99,9 @@ public class Parameter {
     }
 
     public List<Enum> getEnumValues() {
+        if (CollectionUtils.isEmpty(enumValues)) {
+            return Collections.emptyList();
+        }
         return enumValues;
     }
 

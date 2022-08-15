@@ -187,6 +187,17 @@ public class MarkerCommentHighlighter {
                 .create();
     }
 
+    private void highlightInvalidElement(InvalidElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
+        if (!containerTextRange.contains(element.getRange())) {
+            return;
+        }
+
+        holder.newAnnotation(HighlightSeverity.ERROR, element.getMessage())
+                .range(element.getRange())
+                .textAttributes(createTextAttribute("INVALID_PARAMETER_VALUE"))
+                .create();
+    }
+
     private void highlightUnresolvedElement(UnresolvedElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
         if (!containerTextRange.contains(element.getRange())) {
             return;
@@ -279,6 +290,8 @@ public class MarkerCommentHighlighter {
     private void highlightElement(Element element, TextRange containerTextRange, @NotNull AnnotationHolder holder, boolean isMapValue) {
         if (element instanceof MarkerElement) {
             highlightMarkerElement((MarkerElement) element, containerTextRange, holder);
+        } else if (element instanceof InvalidElement) {
+            highlightInvalidElement((InvalidElement)element, containerTextRange, holder);
         } else if (element instanceof ExpectedElement) {
             highlightExpectedElement((ExpectedElement) element, containerTextRange, holder);
         } else if (element instanceof UnresolvedElement) {

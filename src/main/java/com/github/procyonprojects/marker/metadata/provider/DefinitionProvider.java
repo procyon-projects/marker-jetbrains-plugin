@@ -33,7 +33,6 @@ public class DefinitionProvider {
         parameters = new ArrayList<>();
         parameters.add(new Parameter("Value", new TypeInfo(Type.StringType), "The name of the marker", true));
         parameters.add(new Parameter("Description", new TypeInfo(Type.StringType), "The description of the marker", true));
-        parameters.add(new Parameter("Processor", new TypeInfo(Type.StringType), "The name of the marker processor"));
         parameters.add(new Parameter("Repeatable", new TypeInfo(Type.BooleanType), "Whether the marker is repeatable", Boolean.TRUE));
         parameters.add(new Parameter("SyntaxFree", new TypeInfo(Type.BooleanType), "Whether the marker is syntax-free", Boolean.FALSE));
         parameters.add(new Parameter("Test", new TypeInfo(Type.MapType, new TypeInfo(Type.AnyType)), "Whether the marker is syntax-free", Boolean.FALSE));

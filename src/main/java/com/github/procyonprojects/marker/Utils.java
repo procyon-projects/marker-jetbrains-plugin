@@ -157,6 +157,8 @@ public class Utils {
             target = Target.FIELD_LEVEL;
         } else if (element instanceof GoMethodDeclarationImpl) {
             target = Target.STRUCT_METHOD_LEVEL;
+        } else if (element instanceof GoFunctionDeclarationImpl) {
+            target = Target.FUNCTION_LEVEL;
         }
 
         return new TargetInfo(element, target);
