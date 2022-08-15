@@ -228,7 +228,15 @@ public class MarkerCompletionContributor extends CompletionContributor {
                     final Element valueElement = parameterElement.getValue();
                     final TypeInfo typeInfo = parameterElement.getTypeInfo();
 
-                    if (equalSignElement != null && equalSignElement.getRange().getStartOffset() <= parameters.getOffset()) {
+                    if (nameElement instanceof ExpectedElement && equalSignElement == null && valueElement == null && parameterElement.getNext() instanceof ParameterElement && nameElement.getRange().getStartOffset() >= parameters.getOffset()) {
+                        if (parameterElement.getPrevious() != null && parameterElement.getPrevious().getRange().getStartOffset() >= parameters.getOffset()) {
+                            break;
+                        }
+                        unusedParameters.forEach(parameter -> {
+                            elements.add(getParameter(parameter.getName(), parameter.getName(), parameter));
+                        });
+                        break;
+                    } else if (equalSignElement != null && equalSignElement.getRange().getStartOffset() <= parameters.getOffset()) {
                         if (parameterElement.getTypeInfo().getActualType() == Type.AnyType || valueElement instanceof ExpectedElement) {
                             if (valueElement != null && ",".equals(valueElement.getText())) {
                                 if (valueElement.getRange().getEndOffset() > parameters.getOffset()) {
