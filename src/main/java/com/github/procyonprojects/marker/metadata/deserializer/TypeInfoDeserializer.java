@@ -30,19 +30,19 @@ public class TypeInfoDeserializer extends JsonDeserializer<TypeInfo> {
             case "uint32":
             case "uint64":
             case "uint":
-                return new TypeInfo(Type.UnsignedIntegerType);
+                return new TypeInfo(Type.UnsignedIntegerType, type);
             case "int8":
             case "int16":
             case "int32":
             case "int64":
             case "int":
-                return new TypeInfo(Type.SignedIntegerType);
+                return new TypeInfo(Type.SignedIntegerType, type);
             case "bool":
-                return new TypeInfo(Type.BooleanType);
+                return new TypeInfo(Type.BooleanType, type);
             case "string":
-                return new TypeInfo(Type.StringType);
+                return new TypeInfo(Type.StringType, type);
             case "any":
-                return new TypeInfo(Type.AnyType);
+                return new TypeInfo(Type.AnyType, type);
             case "raw":
                 return new TypeInfo(Type.RawType);
             default:
@@ -61,7 +61,7 @@ public class TypeInfoDeserializer extends JsonDeserializer<TypeInfo> {
                             return TypeInfo.INVALID_TYPE_INFO;
                         }
 
-                        return new TypeInfo(Type.MapType, value);
+                        return new TypeInfo(Type.MapType, value, String.format("map[string]%s", value.getPresentableText()));
                     }
 
                     return TypeInfo.INVALID_TYPE_INFO;
@@ -76,7 +76,7 @@ public class TypeInfoDeserializer extends JsonDeserializer<TypeInfo> {
                             return TypeInfo.INVALID_TYPE_INFO;
                         }
 
-                        return new TypeInfo(Type.SliceType, item);
+                        return new TypeInfo(Type.SliceType, item, String.format("[]%s", item.getPresentableText()));
                     }
                 }
         }
