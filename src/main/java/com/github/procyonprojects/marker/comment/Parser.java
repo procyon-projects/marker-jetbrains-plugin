@@ -73,7 +73,7 @@ public class Parser {
                             break;
                         } else if (",".equals(scanner.token())) {
                             parameterElement.setName(new ExpectedElement("Expected argument name", null, scanner.originalPosition()));
-                            break;
+                            continue;
                         } else {
                             parameterElement.setEqualSign(new Element("=", scanner.originalPosition()));
                             argumentName = "Value";
