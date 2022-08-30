@@ -20,22 +20,35 @@
   <extensions defaultExtensionNs="com.intellij">
     <annotator language="go"
                implementationClass="com.github.procyonprojects.marker.annotator.MarkerCommentAnnotator"/>
+    <annotator language="go"
+               implementationClass="com.github.procyonprojects.marker.annotator.ImportAnnotator"/>
 
     <typedHandler implementation="com.github.procyonprojects.marker.delegate.MarkerTypedHandlerDelegate" id="marker" order="first"/>
 
-    <applicationService serviceImplementation="com.github.procyonprojects.marker.metadata.provider.DefinitionProvider"/>
+    <applicationService serviceImplementation="com.github.procyonprojects.marker.metadata.provider.MetadataProvider"/>
     <applicationService serviceImplementation="com.github.procyonprojects.marker.highlighter.MarkerCommentHighlighter"/>
+    <applicationService serviceImplementation="com.github.procyonprojects.marker.highlighter.ImportValuesHighlighter"/>
 
     <completion.contributor
             language="go"
             implementationClass="com.github.procyonprojects.marker.completion.MarkerCompletionContributor" order="first"/>
+    <completion.contributor
+            language="go"
+            implementationClass="com.github.procyonprojects.marker.completion.ImportMarkerCompletionContributor" order="first"/>
+
+    <psi.referenceContributor language="go" implementation="com.github.procyonprojects.marker.reference.MarkerReferenceContributor" order="first"/>
+
+    <additionalLibraryRootsProvider implementation="com.github.procyonprojects.marker.provider.MarkerRootsProvider"/>
+
+    <fileBasedIndex implementation="com.github.procyonprojects.marker.index.MarkerProcessorPackagesIndex"/>
+    <fileBasedIndex implementation="com.github.procyonprojects.marker.index.MarkerImportIndex"/>
+
+    <fileType name="marker.processors.yaml" implementationClass="com.github.procyonprojects.marker.lang.MarkerProcessorsType" fieldName="INSTANCE"
+              language="MarkerYaml" fileNames="marker.processors.yaml"/>
 
     <additionalTextAttributes scheme="Default" file="colorSchemes/Default.xml"/>
     <additionalTextAttributes scheme="Darcula" file="colorSchemes/Darcula.xml"/>
 
-    <!--<codeInsight.parameterInfo language="go" implementationClass="com.github.procyonprojects.marker.parameter.MarkerParameterInfo" order="first"/>
-
--->
   </extensions>
 
   <actions>
