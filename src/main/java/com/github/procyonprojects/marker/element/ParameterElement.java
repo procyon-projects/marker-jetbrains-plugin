@@ -1,7 +1,8 @@
 package com.github.procyonprojects.marker.element;
 
-import com.github.procyonprojects.marker.metadata.Parameter;
 import com.github.procyonprojects.marker.metadata.TypeInfo;
+import com.github.procyonprojects.marker.metadata.v1.Parameter;
+import com.intellij.openapi.util.TextRange;
 
 public class ParameterElement extends Element {
 
@@ -49,5 +50,32 @@ public class ParameterElement extends Element {
 
     public void setParameter(Parameter parameter) {
         this.parameter = parameter;
+    }
+
+    @Override
+    public TextRange getRange() {
+        int startOffset = -1;
+        int endOffset = -1;
+
+        if (name != null) {
+            startOffset = name.getRange().getStartOffset();
+            endOffset = name.getRange().getEndOffset();
+        }
+
+        if (equalSign != null) {
+            endOffset = equalSign.getRange().getEndOffset();
+            if (startOffset == -1) {
+                startOffset = equalSign.getRange().getStartOffset();
+            }
+        }
+
+        if (value != null) {
+            endOffset = value.getRange().getEndOffset();
+            if (startOffset == -1) {
+                startOffset = value.getRange().getStartOffset();
+            }
+        }
+
+        return new TextRange(startOffset, endOffset);
     }
 }

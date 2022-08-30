@@ -220,4 +220,16 @@ public class Utils {
 
         return spaceCount;
     }
+
+    public static String unquote(String value) {
+        if (value.startsWith("\'") && value.endsWith("\'")) {
+            return value.substring(1, value.length()-1);
+        } else if (value.startsWith("`") && value.endsWith("`")) {
+            return value.substring(1, value.length()-1);
+        } else if (value.startsWith("\"") && value.endsWith("\"")) {
+            return value.substring(1, value.length()-1);
+        }
+
+        return value;
+    }
 }

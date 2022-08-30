@@ -6,19 +6,20 @@ import com.github.procyonprojects.marker.comment.Comment;
 import com.github.procyonprojects.marker.comment.ParseResult;
 import com.github.procyonprojects.marker.comment.Parser;
 import com.github.procyonprojects.marker.element.*;
-import com.github.procyonprojects.marker.metadata.Definition;
-import com.github.procyonprojects.marker.metadata.Enum;
-import com.github.procyonprojects.marker.fix.MissingParameterFix;
-import com.github.procyonprojects.marker.metadata.Parameter;
 import com.github.procyonprojects.marker.metadata.Target;
-import com.github.procyonprojects.marker.metadata.provider.DefinitionProvider;
+import com.github.procyonprojects.marker.metadata.provider.MetadataProvider;
+import com.github.procyonprojects.marker.metadata.v1.EnumValue;
+import com.github.procyonprojects.marker.metadata.v1.Marker;
+import com.github.procyonprojects.marker.metadata.v1.Parameter;
 import com.intellij.codeInspection.ProblemHighlightType;
 import com.intellij.lang.annotation.AnnotationHolder;
 import com.intellij.lang.annotation.HighlightSeverity;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.components.Service;
 import com.intellij.openapi.editor.colors.TextAttributesKey;
+import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
+import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.psi.PsiComment;
 import com.intellij.psi.PsiElement;
 import org.apache.commons.collections.CollectionUtils;
@@ -29,7 +30,7 @@ import java.util.*;
 @Service
 public class MarkerCommentHighlighter {
 
-    private static final DefinitionProvider definitionProvider = ApplicationManager.getApplication().getService(DefinitionProvider.class);
+    private static final MetadataProvider METADATA_PROVIDER = ApplicationManager.getApplication().getService(MetadataProvider.class);
 
     private void highlightStringElement(StringElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder, boolean isMapValue) {
         if (element.getParts().size() == 1 && !isMapValue) {
@@ -59,7 +60,7 @@ public class MarkerCommentHighlighter {
 
     private void highlightSliceElement(SliceElement element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
         final Parameter parameter = element.getParameter();
-        final List<Enum> enumList = parameter.getEnumValues();
+        final List<EnumValue> enumList = parameter.getEnumValues();
 
         final List<Element> items = element.getItems();
         final Set<String> usedItems = new HashSet<>();
@@ -266,9 +267,9 @@ public class MarkerCommentHighlighter {
             }
         }
 
-        final Definition definition = element.getDefinition();
+        final Marker marker = element.getMarker();
         final List<String> missingParams = new ArrayList<>();
-        for (Parameter parameter : definition.getParameters()) {
+        for (Parameter parameter : marker.getParameters()) {
             if (parameter.isRequired() && !seen.contains(parameter.getName())) {
                 missingParams.add(parameter.getName());
             }
@@ -278,7 +279,6 @@ public class MarkerCommentHighlighter {
             holder.newAnnotation(HighlightSeverity.ERROR, "Missing parameters : " + missingParams)
                     .range(element.getRange())
                     .textAttributes(createTextAttribute("MARKER_MISSING_PARAMETERS"))
-                    .withFix(new MissingParameterFix(missingParams))
                     .create();
         }
     }
@@ -348,20 +348,28 @@ public class MarkerCommentHighlighter {
         final String anonymousName = Utils.getMarkerAnonymousName(firstLineText);
         final String markerName = Utils.getMarkerName(firstLineText);
 
-        Optional<Definition> definition = definitionProvider.find(targetInfo.getTarget(), anonymousName);
 
-        if (definition.isEmpty()) {
-            definition = definitionProvider.find(targetInfo.getTarget(), markerName);
-            if (definition.isEmpty()) {
+        Project project = element.getProject();
+        VirtualFile file = element.getContainingFile().getVirtualFile();
+
+        Optional<Marker> marker = METADATA_PROVIDER.findMarker(project, file, anonymousName, targetInfo.getTarget());
+        String aliasName;
+
+        if (marker.isEmpty()) {
+            marker = METADATA_PROVIDER.findMarker(project, file, markerName, targetInfo.getTarget());
+            if (marker.isEmpty()) {
                 int startIndex = firstLine.startOffset() + firstLine.getText().indexOf("+" + anonymousName);
                 int endIndex = startIndex + anonymousName.length() + 1;
                 highlightUnresolvedMarker(new Element("+" + anonymousName, new TextRange(startIndex, endIndex)), element.getTextRange(), holder);
                 return;
             }
+            aliasName = markerName;
+        } else {
+            aliasName = anonymousName;
         }
 
         final Parser parser = new Parser();
-        final ParseResult result = parser.parse(definition.get(), comment);
+        final ParseResult result = parser.parse(marker.get(), comment, aliasName);
         if (result != null) {
             highlightElement(result.getMarkerElement(), element.getTextRange(), holder, false);
             highlightNewLineElements(result.getNextLineElements(), element.getTextRange(), holder);

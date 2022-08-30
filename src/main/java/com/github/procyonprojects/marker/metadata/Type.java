@@ -9,5 +9,7 @@ public enum Type {
     SignedIntegerType,
     StringType,
     SliceType,
-    MapType
+    MapType,
+    GoFunction,
+    GoType
 }

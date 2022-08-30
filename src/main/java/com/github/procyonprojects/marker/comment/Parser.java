@@ -2,10 +2,12 @@ package com.github.procyonprojects.marker.comment;
 
 import com.github.procyonprojects.marker.Utils;
 import com.github.procyonprojects.marker.element.*;
-import com.github.procyonprojects.marker.metadata.Definition;
-import com.github.procyonprojects.marker.metadata.Parameter;
 import com.github.procyonprojects.marker.metadata.Type;
 import com.github.procyonprojects.marker.metadata.TypeInfo;
+import com.github.procyonprojects.marker.metadata.v1.Marker;
+import com.github.procyonprojects.marker.metadata.v1.Parameter;
+import com.github.procyonprojects.marker.metadata.v1.schema.AnySchema;
+import com.github.procyonprojects.marker.metadata.v1.schema.SliceSchema;
 import com.intellij.openapi.util.TextRange;
 import org.apache.commons.collections.CollectionUtils;
 
@@ -13,18 +15,18 @@ import java.util.*;
 
 public class Parser {
 
-    public ParseResult parse(Definition definition, Comment comment) {
+    public ParseResult parse(Marker marker, Comment comment, String aliasMarker) {
         final Optional<Comment.Line> firstLine = comment.firstLine();
 
         if (firstLine.isEmpty()) {
             return null;
         }
 
-        final String markerName = "+" + definition.getName();
+        final String markerName = "+" + aliasMarker;
         final String firstLineText = firstLine.get().getText();
         final int firstLineStartOffset = firstLine.get().startOffset();
 
-        final MarkerElement markerElement = new MarkerElement(definition);
+        final MarkerElement markerElement = new MarkerElement(marker);
         markerElement.setText(markerName);
 
         int markerStartIndex = firstLineText.indexOf(markerName) + firstLineStartOffset;
@@ -40,12 +42,12 @@ public class Parser {
 
         markerElement.setRange(new TextRange(markerStartIndex, markerEndIndex));
 
-        final Scanner scanner = new Scanner(definition, comment);
+        final Scanner scanner = new Scanner(marker, comment, aliasMarker);
         final Map<String, Parameter> seenMap = new HashMap<>();
 
         Element currentElement = markerElement;
 
-        if (CollectionUtils.isNotEmpty(definition.getParameters()) && scanner.peek() != Scanner.EOF) {
+        if (CollectionUtils.isNotEmpty(marker.getParameters()) && scanner.peek() != Scanner.EOF) {
             while (true) {
                 int character = scanner.skipWhitespaces();
 
@@ -77,16 +79,21 @@ public class Parser {
                         } else {
                             parameterElement.setEqualSign(new Element("=", scanner.originalPosition()));
                             argumentName = "Value";
-                            parameter = definition.getParameter(argumentName);
+                            parameter = marker.getParameter(argumentName);
 
                             if (parameter.isEmpty()) {
                                 Parameter anyParameter = new Parameter();
-                                anyParameter.setType(TypeInfo.ANY_TYPE_INFO);
+                                anyParameter.setSchema(new AnySchema());
                                 parameter = Optional.of(anyParameter);
                                 parameterElement.setName(new UnresolvedElement(String.format("Unresolved parameter %s", argumentName), argumentName, scanner.originalPosition()));
                             }
                         }
                     } else {
+                        if (",".equals(scanner.token())) {
+                            parameterElement.setName(new ExpectedElement("Expected argument name", null, scanner.originalPosition()));
+                            continue;
+                        }
+
                         parameterElement.setName(new ExpectedElement("Expected argument name", null, scanner.originalPosition()));
                         break;
                     }
@@ -94,11 +101,11 @@ public class Parser {
                     argumentName = scanner.token();
                     parameterElement.setName(new Element(argumentName, scanner.originalPosition()));
 
-                    parameter = definition.getParameter(argumentName);
+                    parameter = marker.getParameter(argumentName);
 
                     if (parameter.isEmpty()) {
                         Parameter anyParameter = new Parameter();
-                        anyParameter.setType(TypeInfo.ANY_TYPE_INFO);
+                        anyParameter.setSchema(new AnySchema());
                         parameter = Optional.of(anyParameter);
                         parameterElement.setName(new UnresolvedElement(String.format("Unresolved parameter %s", argumentName), argumentName, scanner.originalPosition()));
                     }
@@ -129,6 +136,7 @@ public class Parser {
                 seenMap.put(argumentName, parameter.get());
 
                 if (scanner.peek() == Scanner.EOF) {
+                    parameterElement.setValue(new ExpectedElement("Expected argument value", null, new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1)));
                     break;
                 } else if (scanner.peek() == Scanner.NEW_LINE) {
                     if (!scanner.nextLine()) {
@@ -139,9 +147,19 @@ public class Parser {
 
                 if (value == null) {
                     parameterElement.setValue(new ExpectedElement("Expected argument value", null, new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1)));
-                    break;
+                    continue;
                 } else {
+                    if (value instanceof StringElement) {
+                        if ("=".equals(value.getText())) {
+                            parameterElement.setValue(new ExpectedElement("Expected argument value", null, parameterElement.getEqualSign().getRange()));
+                            continue;
+                        }
+                    }
                     parameterElement.setValue(value);
+                }
+
+                if (value instanceof ExpectedElement && ",".equals(value.getText())) {
+                    continue;
                 }
 
                 scanner.skipWhitespaces();
@@ -155,13 +173,13 @@ public class Parser {
                 }
 
                 if (!scanner.expect(',', "Comma")) {
-                    ExpectedElement expectedComma = new ExpectedElement("Expected comma ','", ",", scanner.originalPosition());
+                    ExpectedElement expectedComma = new ExpectedElement("Expected comma ','", ",", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
                     currentElement.setNext(expectedComma);
                     expectedComma.setPrevious(currentElement);
                     break;
                 }
 
-                Element commaElement = new Element(",", scanner.originalPosition());
+                Element commaElement = new Element(",", new TextRange(scanner.originalStartPosition(), scanner.originalStartPosition() + 1));
                 currentElement.setNext(commaElement);
                 commaElement.setPrevious(currentElement);
                 currentElement = commaElement;
@@ -190,6 +208,10 @@ public class Parser {
                 return parseStringValue(scanner);
             case SliceType:
                 return parseSliceValues(scanner, parameter, typeInfo.getItemType());
+            case GoType:
+                return parseTypeValue(scanner);
+            case GoFunction:
+                return parseFunctionValue(scanner);
             case MapType:
                 return parseMapValues(scanner, parameter, typeInfo.getItemType());
             case AnyType:
@@ -317,6 +339,50 @@ public class Parser {
         return null;
     }
 
+    private Element parseTypeValue(Scanner scanner) {
+        int token = scanner.scan();
+
+        if (token != Scanner.IDENTIFIER) {
+            return new ExpectedElement("Expected type", scanner.token(), scanner.originalPosition());
+        }
+
+        int character = scanner.peek();
+        if (Character.isWhitespace(character)) {
+            return new ExpectedElement("Invalid type", scanner.token(), scanner.originalPosition());
+        }
+
+        scanner.scanFunctionOrType();
+        String type = scanner.token();
+
+        if (!type.endsWith(".type")) {
+            return new ExpectedElement("Invalid type", scanner.token(), scanner.originalPosition());
+        }
+
+        return new TypeElement(scanner.token(), scanner.originalPosition());
+    }
+
+    private Element parseFunctionValue(Scanner scanner) {
+        int token = scanner.scan();
+
+        if (token != Scanner.IDENTIFIER) {
+            return new ExpectedElement("Expected function", scanner.token(), scanner.originalPosition());
+        }
+
+        int character = scanner.peek();
+        if (Character.isWhitespace(character)) {
+            return new ExpectedElement("Invalid function", scanner.token(), scanner.originalPosition());
+        }
+
+        scanner.scanFunctionOrType();
+        String func = scanner.token();
+
+        if (!func.endsWith(".func")) {
+            return new ExpectedElement("Invalid function", scanner.token(), scanner.originalPosition());
+        }
+
+        return new FuncElement(scanner.token(), scanner.originalPosition());
+    }
+
     private Element parseSliceValues(Scanner scanner, Parameter parameter, TypeInfo itemTypeInfo) {
 
         final SliceElement sliceElement = new SliceElement();
@@ -361,7 +427,16 @@ public class Parser {
                 }
 
                 item.setPrevious(current);
-                current = item;
+                if (item instanceof SliceElement) {
+                    SliceElement slice = (SliceElement) item;
+                    if (slice.getLastItem() != null) {
+                        current = slice.getLastItem();
+                    } else {
+                        current = item;
+                    }
+                } else {
+                    current = item;
+                }
 
                 int token = scanner.skipWhitespaces();
 
@@ -439,7 +514,16 @@ public class Parser {
                 sliceElement.setNext(item);
             }
 
-            current = item;
+            if (item instanceof SliceElement) {
+                SliceElement slice = (SliceElement) item;
+                if (slice.getLastItem() != null) {
+                    current = slice.getLastItem();
+                } else {
+                    current = item;
+                }
+            } else {
+                current = item;
+            }
 
             int token = scanner.skipWhitespaces();
 

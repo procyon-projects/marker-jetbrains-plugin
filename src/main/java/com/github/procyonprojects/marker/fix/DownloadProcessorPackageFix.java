@@ -11,22 +11,22 @@ import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
 
-public class MissingParameterFix extends BaseIntentionAction {
+public class DownloadProcessorPackageFix extends BaseIntentionAction {
 
-    private final List<String> missingParameters;
+    private final String pkg;
 
-    public MissingParameterFix(List<String> missingParameters) {
-        this.missingParameters = missingParameters;
+    public DownloadProcessorPackageFix(String pkg) {
+        this.pkg = pkg;
     }
 
     @Override
     public @IntentionName @NotNull String getText() {
-        return "Add missing parameters " + missingParameters;
+        return String.format("Download '%s'", pkg);
     }
 
     @Override
     public @NotNull @IntentionFamilyName String getFamilyName() {
-        return "Add missing parameters";
+        return "Download processor package";
     }
 
     @Override
