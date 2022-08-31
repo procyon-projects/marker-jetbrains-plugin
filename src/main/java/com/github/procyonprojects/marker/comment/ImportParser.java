@@ -8,8 +8,8 @@ import com.goide.GoParserDefinition;
 import com.goide.GoTypes;
 import com.goide.lexer.GoLexer;
 import com.intellij.lexer.LexerPosition;
+import com.intellij.openapi.util.Pair;
 import com.intellij.psi.tree.IElementType;
-import javafx.util.Pair;
 import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
 
@@ -126,7 +126,7 @@ public class ImportParser {
         lines.add(new Comment.Line(currentText));
 
         Pair<IElementType, Pair<LexerPosition, String>> next = nextElement();
-        while (currentText.endsWith(" \\") && isWhiteSpace(next.getKey()) && next.getValue().getValue().equals("\n")) {
+        while (currentText.endsWith(" \\") && isWhiteSpace(next.getFirst()) && next.getSecond().getSecond().equals("\n")) {
             myLexer.advance();
             currentElement = myLexer.getTokenType();
             currentText = myLexer.getTokenText();
@@ -165,34 +165,34 @@ public class ImportParser {
                     && isWhiteSpace(previous)
                     && StringUtils.countMatches(previousText, '\n') >= 1) {
                 final Pair<IElementType, Pair<LexerPosition, String>> next = nextElement();
-                if (isWhiteSpace(next.getKey()) && StringUtils.countMatches(next.getValue().getValue(), '\n') >= 1) {
-                    Pair<IElementType, Pair<LexerPosition, String>> temp1 = nextElement(next.getValue().getKey(), myLexer.getCurrentPosition());
-                    if (isWhiteSpace(temp1.getKey()) && StringUtils.countMatches(temp1.getValue().getValue(), '\t') >= 1) {
-                        Pair<IElementType, Pair<LexerPosition, String>> temp2 = nextElement(temp1.getValue().getKey(), myLexer.getCurrentPosition());
-                        if (isWhiteSpace(temp2.getKey()) && StringUtils.countMatches(temp2.getValue().getValue(), '\n') >= 1) {
-                            Pair<IElementType, Pair<LexerPosition, String>> temp3 = nextElement(temp2.getValue().getKey(), myLexer.getCurrentPosition());
-                            if (!isWhiteSpace(temp3.getKey())) {
+                if (isWhiteSpace(next.getFirst()) && StringUtils.countMatches(next.getSecond().getSecond(), '\n') >= 1) {
+                    Pair<IElementType, Pair<LexerPosition, String>> temp1 = nextElement(next.getSecond().getFirst(), myLexer.getCurrentPosition());
+                    if (isWhiteSpace(temp1.getFirst()) && StringUtils.countMatches(temp1.getSecond().getSecond(), '\t') >= 1) {
+                        Pair<IElementType, Pair<LexerPosition, String>> temp2 = nextElement(temp1.getSecond().getFirst(), myLexer.getCurrentPosition());
+                        if (isWhiteSpace(temp2.getFirst()) && StringUtils.countMatches(temp2.getSecond().getSecond(), '\n') >= 1) {
+                            Pair<IElementType, Pair<LexerPosition, String>> temp3 = nextElement(temp2.getSecond().getFirst(), myLexer.getCurrentPosition());
+                            if (!isWhiteSpace(temp3.getFirst())) {
                                 commentIndex++;
                             }
-                        } else if (isComment(temp1.getKey())) {
+                        } else if (isComment(temp1.getFirst())) {
                             commentIndex++;
 
                             previous = current;
                             previousText = currentText;
-                            current = temp2.getKey();
-                            currentText = temp2.getValue().getValue();
+                            current = temp2.getFirst();
+                            currentText = temp2.getSecond().getSecond();
                             continue;
                         }
-                    } else if (isWhiteSpace(temp1.getKey())) {
+                    } else if (isWhiteSpace(temp1.getFirst())) {
                         commentIndex++;
                     }
                 }
             } else if (isWhiteSpace(current) && StringUtils.countMatches(currentText, '\n') > 1) {
                 final Pair<IElementType, Pair<LexerPosition, String>> next = nextElement();
-                if (isComment(next.getKey())) {
+                if (isComment(next.getFirst())) {
                     commentIndex++;
-                } else if(isWhiteSpace(next.getKey()) && StringUtils.countMatches(next.getValue().getValue(), '\t') >= 1
-                        && isComment(nextElement(next.getValue().getKey(), myLexer.getCurrentPosition()).getKey())) {
+                } else if(isWhiteSpace(next.getFirst()) && StringUtils.countMatches(next.getSecond().getSecond(), '\t') >= 1
+                        && isComment(nextElement(next.getSecond().getFirst(), myLexer.getCurrentPosition()).getFirst())) {
                     commentIndex++;
                 }
             }

@@ -49,7 +49,7 @@ public class ImportValuesHighlighter {
     }
 
     public void highlight(Comment comment, PsiElement element, AnnotationHolder holder) {
-        final TargetInfo targetInfo = Utils.findTarget((PsiComment) comment);
+        final TargetInfo targetInfo = Utils.findTarget((PsiComment) element);
         if (targetInfo.getTarget() == Target.INVALID || targetInfo.getTarget() != Target.PACKAGE_LEVEL) {
             return;
         }

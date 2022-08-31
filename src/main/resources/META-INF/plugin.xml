@@ -37,6 +37,7 @@
             implementationClass="com.github.procyonprojects.marker.completion.ImportMarkerCompletionContributor" order="first"/>
 
     <psi.referenceContributor language="go" implementation="com.github.procyonprojects.marker.reference.MarkerReferenceContributor" order="first"/>
+    <psi.referenceContributor language="go" implementation="com.github.procyonprojects.marker.reference.TypeFunctionReferenceContributor" order="first"/>
 
     <additionalLibraryRootsProvider implementation="com.github.procyonprojects.marker.provider.MarkerRootsProvider"/>
 
