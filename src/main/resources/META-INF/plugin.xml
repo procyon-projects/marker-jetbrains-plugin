@@ -18,6 +18,12 @@
   <depends>org.jetbrains.plugins.go</depends>
 
   <extensions defaultExtensionNs="com.intellij">
+    <localInspection language="go" groupPath="Go"
+                     bundle="messages.GoBundle" key="go.inspection.deprecated.element.display.name"
+                     groupBundle="messages.InspectionsBundle" groupKey="inspection.general.tools.group.name"
+                     enabledByDefault="true" level="WARNING"
+                     implementationClass="com.github.procyonprojects.marker.inspection.MarkerDeprecationInspection"/>
+
     <annotator language="go"
                implementationClass="com.github.procyonprojects.marker.annotator.MarkerCommentAnnotator"/>
     <annotator language="go"
@@ -46,6 +52,8 @@
 
     <fileType name="marker.processors.yaml" implementationClass="com.github.procyonprojects.marker.lang.MarkerProcessorsType" fieldName="INSTANCE"
               language="MarkerYaml" fileNames="marker.processors.yaml"/>
+
+    <codeInsight.parameterInfo language="go" implementationClass="com.github.procyonprojects.marker.handler.MarkerParameterInfoHandler" order="first"/>
 
     <additionalTextAttributes scheme="Default" file="colorSchemes/Default.xml"/>
     <additionalTextAttributes scheme="Darcula" file="colorSchemes/Darcula.xml"/>
