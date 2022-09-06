@@ -2,7 +2,7 @@ package com.github.procyonprojects.marker.comment;
 
 import com.github.procyonprojects.marker.Utils;
 import com.github.procyonprojects.marker.element.Element;
-import com.github.procyonprojects.marker.metadata.Definition;
+import com.github.procyonprojects.marker.metadata.v1.Marker;
 import com.intellij.openapi.util.TextRange;
 
 import java.util.ArrayList;
@@ -31,13 +31,13 @@ public class Scanner {
     private String firstLineText;
     private int firstLineStartPosition;
 
-    public Scanner(Definition definition, Comment comment) {
+    public Scanner(Marker marker, Comment comment, String aliasMarker) {
         this.tokenList = new ArrayList<>();
         this.lines = comment.getLines();
 
         final Optional<Comment.Line> firstLine = comment.firstLine();
 
-        final String markerName = "+" + definition.getName();
+        final String markerName = "+" + aliasMarker;
         final String firstLineText = firstLine.get().getText();
         final int firstLineStartOffset = firstLine.get().startOffset();
 
@@ -157,6 +157,11 @@ public class Scanner {
     }
 
     public boolean expect(int expected, String description) {
+        if (expected == peek()) {
+            scan();
+            return true;
+        }
+
         int token = scan();
 
         if (token != expected) {
@@ -348,6 +353,22 @@ public class Scanner {
         int character = skipWhitespaces();
 
         for (int index = 1; isIdentifier(character, index); index++) {
+            character = next();
+        }
+
+        endPosition = searchIndex;
+        this.current = character;
+        return character;
+    }
+
+    public int scanFunctionOrType() {
+        if (isIdentifier(skipWhitespaces(), 1)) {
+            startPosition = searchIndex;
+        }
+
+        int character = skipWhitespaces();
+
+        for (int index = 1; isIdentifier(character, index) || character == '.' || character == '/'; index++) {
             character = next();
         }
 

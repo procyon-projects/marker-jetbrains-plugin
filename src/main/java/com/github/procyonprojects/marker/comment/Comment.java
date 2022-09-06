@@ -1,6 +1,7 @@
 package com.github.procyonprojects.marker.comment;
 
 import com.intellij.psi.PsiElement;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.List;
 import java.util.Optional;
@@ -35,7 +36,12 @@ public class Comment {
 
     public static class Line {
 
+        private String text;
         private PsiElement element;
+
+        public Line(String text) {
+            this.text = text;
+        }
 
         public Line(PsiElement element) {
             this.element = element;
@@ -46,14 +52,26 @@ public class Comment {
         }
 
         public String getText() {
+            if (StringUtils.isNotEmpty(text)) {
+                return text.substring(2);
+            }
+
             return element.getText().substring(2);
         }
 
         public int startOffset() {
+            if (StringUtils.isNotEmpty(text)) {
+                return 0;
+            }
+
             return element.getTextRange().getStartOffset() + 2;
         }
 
         public int endOffset() {
+            if (StringUtils.isNotEmpty(text)) {
+                return 0;
+            }
+
             return element.getTextRange().getEndOffset() + 2;
         }
     }

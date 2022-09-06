@@ -83,4 +83,28 @@
             <option name="EFFECT_TYPE" value="2"/>
         </value>
     </option>
+    <option name="STRING_KEY_PROBLEM">
+        <value>
+            <option name="FOREGROUND" value="660E7A"/>
+            <option name="FONT_TYPE" value="2"/>
+            <option name="EFFECT_COLOR" value="BC3F3C"/>
+            <option name="EFFECT_TYPE" value="2"/>
+        </value>
+    </option>
+    <option name="STRING_VALUE_PROBLEM">
+        <value>
+            <option name="FOREGROUND" value="08000"/>
+            <option name="FONT_TYPE" value="2"/>
+            <option name="EFFECT_COLOR" value="BC3F3C"/>
+            <option name="EFFECT_TYPE" value="2"/>
+        </value>
+    </option>
+    <option name="MARKER_NON_REPEATABLE_ERROR">
+        <value>
+            <option name="FOREGROUND" value="93A629"/>
+            <option name="FONT_TYPE" value="3"/>
+            <option name="EFFECT_COLOR" value="BC3F3C"/>
+            <option name="EFFECT_TYPE" value="2"/>
+        </value>
+    </option>
 </list>

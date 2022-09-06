@@ -1,14 +1,13 @@
 package com.github.procyonprojects.marker.metadata;
 
 import org.apache.commons.lang3.StringUtils;
-import org.jetbrains.annotations.NotNull;
 
 public class TypeInfo {
 
     public static final TypeInfo INVALID_TYPE_INFO = new TypeInfo(Type.InvalidType);
     public static final TypeInfo ANY_TYPE_INFO = new TypeInfo(Type.AnyType);
 
-    private String presentableText;
+    private final String presentableText;
     private final Type actualType;
     private final TypeInfo itemType;
 
@@ -60,6 +59,10 @@ public class TypeInfo {
                 return "any";
             case RawType:
                 return "raw";
+            case GoFunction:
+                return "func";
+            case GoType:
+                return "type";
             case MapType:
                 return String.format("map[string]%s", getTypeText(itemType.getActualType(), itemType.getItemType()));
             case SliceType:

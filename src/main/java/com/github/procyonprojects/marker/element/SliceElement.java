@@ -1,6 +1,6 @@
 package com.github.procyonprojects.marker.element;
 
-import com.github.procyonprojects.marker.metadata.Parameter;
+import com.github.procyonprojects.marker.metadata.v1.Parameter;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,4 +44,17 @@ public class SliceElement extends Element {
         }
         return items;
     }
+
+    public Element getFirstItem() {
+        return getNext();
+    }
+
+    public Element getLastItem() {
+        Element current = getNext();
+        while (current != null && current.getNext() != null) {
+            current = current.getNext();
+        }
+        return current;
+    }
+
 }
