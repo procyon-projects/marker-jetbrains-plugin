@@ -20,6 +20,10 @@ public class ImportParser {
     private final GoLexer myLexer = new GoLexer();
 
     public @NotNull Set<ImportMarker> parse(Marker marker, @NotNull CharSequence content) {
+        if (content == null) {
+            return Collections.emptySet();
+        }
+
         this.myLexer.start(content, 0, content.length());
         final Set<ImportMarker> importMarkers = new HashSet<>();
         final Parser parser = new Parser();
@@ -200,8 +204,13 @@ public class ImportParser {
             previous = current;
             previousText = currentText;
             myLexer.advance();
-            current = myLexer.getTokenType();
-            currentText = myLexer.getTokenText();
+            try
+            {
+                current = myLexer.getTokenType();
+                currentText = myLexer.getTokenText();
+            } catch (Exception e) {
+
+            }
         }
 
         if (commentIndex > 1) {

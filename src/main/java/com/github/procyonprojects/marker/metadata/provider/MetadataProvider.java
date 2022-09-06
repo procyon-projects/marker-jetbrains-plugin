@@ -19,6 +19,7 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.util.indexing.FileBasedIndex;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.collections.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.*;
@@ -141,7 +142,10 @@ public class MetadataProvider {
         indexMap.put("pdeprecated", "");
         indexMap.put("poverride", "");
         indexMap.put("pmarker", "");
-        indexMap.putAll(FileBasedIndex.getInstance().getFileData(MarkerImportIndex.KEY, file, project));
+        Map<String, String> fileImportMap = FileBasedIndex.getInstance().getFileData(MarkerImportIndex.KEY, file, project);
+        if (MapUtils.isNotEmpty(fileImportMap)) {
+            indexMap.putAll(fileImportMap);
+        }
         return indexMap;
     }
 

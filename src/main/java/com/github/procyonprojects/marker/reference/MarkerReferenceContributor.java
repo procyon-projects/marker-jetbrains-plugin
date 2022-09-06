@@ -76,7 +76,7 @@ public class MarkerReferenceContributor extends PsiReferenceContributor {
 
 
         Project project = element.getProject();
-        VirtualFile file = element.getContainingFile().getVirtualFile();
+        VirtualFile file = element.getContainingFile().getOriginalFile().getVirtualFile();
 
         Optional<Marker> marker = METADATA_PROVIDER.findMarker(project, file, anonymousName, targetInfo.getTarget());
         String aliasName;

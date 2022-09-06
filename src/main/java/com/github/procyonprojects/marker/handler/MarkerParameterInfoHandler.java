@@ -76,7 +76,7 @@ public class MarkerParameterInfoHandler implements ParameterInfoHandler<PsiComme
             }
         }
 
-        if (CollectionUtils.isNotEmpty(marker.get().getParameters())) {
+        if (CollectionUtils.isEmpty(marker.get().getParameters())) {
             context.setItemsToShow(new Object[]{"<no parameters>"});
         } else {
             context.setItemsToShow(ArrayUtil.toObjectArray(marker.get().getParameters()));
