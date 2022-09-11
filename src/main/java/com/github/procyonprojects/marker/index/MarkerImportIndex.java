@@ -18,7 +18,6 @@ public class MarkerImportIndex extends FileBasedIndexExtension<String, String> {
 
     public static final MetadataProvider METADATA_PROVIDER = ApplicationManager.getApplication().getService(MetadataProvider.class);
     public static final ID<String, String> KEY = ID.create("go.marker.imports");
-    private final ImportParser importParser = new ImportParser();
 
     @Override
     public @NotNull ID<String, String> getName() {
@@ -27,24 +26,38 @@ public class MarkerImportIndex extends FileBasedIndexExtension<String, String> {
 
     @Override
     public @NotNull DataIndexer<String, String, FileContent> getIndexer() {
-        return inputData -> {
-            Optional<Marker> marker = METADATA_PROVIDER.getImportMarker();
-            if (marker.isEmpty()) {
-                return Collections.emptyMap();
-            }
-
-            Set<ImportParser.ImportMarker> importMarkers = importParser.parse(marker.get(), inputData.getContentAsText());
-            Map<String, String> indexMap = new HashMap<>();
-            importMarkers.forEach(importMarker -> {
-                if (importMarker.getAlias() != null) {
-                    indexMap.put("a" + importMarker.getAlias(), importMarker.getProcessor());
-                    indexMap.put("p" + importMarker.getAlias(), importMarker.getPkg());
-                } else {
-                    indexMap.put("p" + importMarker.getProcessor(), importMarker.getPkg());
+        return new DataIndexer<String, String, FileContent>() {
+            @Override
+            public @NotNull Map<String, String> map(@NotNull FileContent inputData) {
+                Optional<Marker> marker = METADATA_PROVIDER.getImportMarker();
+                if (marker.isEmpty()) {
+                    return Collections.emptyMap();
                 }
-            });
 
-            return indexMap;
+                if (inputData.getFileName().equals("main.go")) {
+                    String x = inputData.getFileName();
+                    if (x.equals("")) {
+                        inputData.getContentAsText();
+                    }
+                }
+
+                Map<String, String> indexMap = new HashMap<>();
+                try {
+                    Set<ImportParser.ImportMarker> importMarkers =  new ImportParser().parse(marker.get(), inputData.getContentAsText());
+
+                    importMarkers.forEach(importMarker -> {
+                        if (importMarker.getAlias() != null) {
+                            indexMap.put("a" + importMarker.getAlias(), importMarker.getProcessor());
+                            indexMap.put("p" + importMarker.getAlias(), importMarker.getPkg());
+                        } else {
+                            indexMap.put("p" + importMarker.getProcessor(), importMarker.getPkg());
+                        }
+                    });
+                } catch (Exception ignored) {
+
+                }
+                return indexMap;
+            }
         };
     }
 

@@ -10,7 +10,6 @@ import com.github.procyonprojects.marker.metadata.Target;
 import com.github.procyonprojects.marker.metadata.Type;
 import com.github.procyonprojects.marker.metadata.provider.MetadataProvider;
 import com.github.procyonprojects.marker.metadata.v1.Marker;
-import com.goide.psi.impl.GoPackageClauseImpl;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.TextRange;
@@ -18,11 +17,8 @@ import com.intellij.openapi.vfs.VirtualFile;
 import com.intellij.patterns.PatternCondition;
 import com.intellij.patterns.PlatformPatterns;
 import com.intellij.psi.*;
-import com.intellij.util.ArrayUtil;
 import com.intellij.util.ProcessingContext;
-import org.apache.commons.lang3.StringUtils;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import java.util.*;
 
@@ -77,7 +73,7 @@ public class TypeFunctionReferenceContributor extends PsiReferenceContributor {
         final String markerName = Utils.getMarkerName(firstLineText);
 
         Project project = element.getProject();
-        VirtualFile file = element.getContainingFile().getVirtualFile();
+        VirtualFile file = element.getContainingFile().getOriginalFile().getVirtualFile();
 
         Optional<Marker> marker = METADATA_PROVIDER.findMarker(project, file, anonymousName, targetInfo.getTarget());
         String aliasName;

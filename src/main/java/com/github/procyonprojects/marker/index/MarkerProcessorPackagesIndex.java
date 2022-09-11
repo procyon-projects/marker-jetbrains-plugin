@@ -2,7 +2,6 @@ package com.github.procyonprojects.marker.index;
 
 import com.github.procyonprojects.marker.lang.MarkerProcessorsType;
 import com.github.procyonprojects.marker.metadata.provider.MetadataProvider;
-import com.goide.GoFileType;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.fileTypes.FileType;
 import com.intellij.util.indexing.*;
@@ -29,12 +28,16 @@ public class MarkerProcessorPackagesIndex extends FileBasedIndexExtension<String
         return (inputData) -> {
             String processorPackageFullPath = FilenameUtils.getPathNoEndSeparator(inputData.getFile().getPath());
             int lastIndexOfSeparator = FilenameUtils.indexOfLastSeparator(processorPackageFullPath);
-            int indexOfMarkerBasePath = processorPackageFullPath.indexOf("marker");
-            String processorPackage = processorPackageFullPath.substring(indexOfMarkerBasePath + "marker".length() + 1, lastIndexOfSeparator);
+            int indexOfMarkerBasePath = processorPackageFullPath.indexOf("marker/pkg");
+            if (indexOfMarkerBasePath == -1)  {
+                return Collections.emptyMap();
+            }
+
+            String processorPackage = processorPackageFullPath.substring(indexOfMarkerBasePath + "marker/pkg".length() + 1, lastIndexOfSeparator);
             String version = processorPackageFullPath.substring(lastIndexOfSeparator + 1);
 
             String pkg = processorPackage + "@" + version;
-            if (METADATA_PROVIDER.packageExistsInCache(pkg)) {
+             if (METADATA_PROVIDER.packageExistsInCache(pkg)) {
                 METADATA_PROVIDER.updateCache(pkg, String.valueOf(inputData.getContentAsText()));
             }
 

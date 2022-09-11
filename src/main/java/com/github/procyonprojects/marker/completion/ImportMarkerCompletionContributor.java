@@ -93,6 +93,10 @@ public class ImportMarkerCompletionContributor extends CompletionContributor {
         Element current = markerElement.getNext();
         final Optional<String> pkg = getPackageName(markerElement);
 
+        if (pkg.isEmpty()) {
+            return;
+        }
+
         while (current != null) {
             if (current instanceof ParameterElement) {
                 final ParameterElement parameterElement = (ParameterElement) current;
@@ -105,8 +109,8 @@ public class ImportMarkerCompletionContributor extends CompletionContributor {
                 } else if (pkg.isPresent() && nameElement == null && !(equalSignElement instanceof ExpectedElement)) {
                     addProcessorCommandCompletions(pkg.get(), parameterElement, parameters, context, result);
                 }
-                current = current.getNext();
             }
+            current = current.getNext();
         }
     }
 

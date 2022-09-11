@@ -7,7 +7,6 @@ import com.github.procyonprojects.marker.metadata.TypeInfo;
 import com.github.procyonprojects.marker.metadata.v1.Marker;
 import com.github.procyonprojects.marker.metadata.v1.Parameter;
 import com.github.procyonprojects.marker.metadata.v1.schema.AnySchema;
-import com.github.procyonprojects.marker.metadata.v1.schema.SliceSchema;
 import com.intellij.openapi.util.TextRange;
 import org.apache.commons.collections.CollectionUtils;
 
@@ -742,7 +741,7 @@ public class Parser {
                         scanner.setSearchIndex(searchIndex);
                     }
 
-                    return new TypeInfo(Type.SliceType, elementType);
+                    return new TypeInfo(Type.SliceType, TypeInfo.ANY_TYPE_INFO);
                 }
 
                 parseStringValue(scanner);
@@ -753,7 +752,7 @@ public class Parser {
                         scanner.setLineIndex(lineIndex);
                         scanner.setSearchIndex(searchIndex);
 
-                        return new TypeInfo(Type.SliceType, elementType);
+                        return new TypeInfo(Type.SliceType, TypeInfo.ANY_TYPE_INFO);
                     } else {
                         token = scanner.scan();
                     }
@@ -769,7 +768,7 @@ public class Parser {
             scanner.setLineIndex(lineIndex);
             scanner.setSearchIndex(searchIndex);
 
-            return new TypeInfo(Type.SliceType, elementType);
+            return new TypeInfo(Type.SliceType, TypeInfo.ANY_TYPE_INFO);
         }
 
         boolean canBeString = false;
