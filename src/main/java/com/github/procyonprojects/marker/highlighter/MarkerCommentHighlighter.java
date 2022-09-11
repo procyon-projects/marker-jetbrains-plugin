@@ -1,8 +1,5 @@
 package com.github.procyonprojects.marker.highlighter;
 
-import b.h.E;
-import b.h.M;
-import b.h.P;
 import com.github.procyonprojects.marker.TargetInfo;
 import com.github.procyonprojects.marker.Utils;
 import com.github.procyonprojects.marker.comment.Comment;
@@ -589,19 +586,23 @@ public class MarkerCommentHighlighter {
 
 
             Optional<Marker> marker = METADATA_PROVIDER.findMarker(project, file, anonymousName, target);
+            String aliasName;
             if (marker.isEmpty()) {
                 marker = METADATA_PROVIDER.findMarker(project, file, markerName, target);
                 if (marker.isEmpty()) {
                     return;
                 }
+                aliasName = markerName;
+            } else {
+                aliasName = anonymousName;
             }
 
             if (!duplicates.containsKey(marker.get().getName())) {
                 List<MarkerDuplicate> markerDuplicateList = new ArrayList<>();
-                markerDuplicateList.add(new MarkerDuplicate(comment, marker.get(), marker.get().getName()));
+                markerDuplicateList.add(new MarkerDuplicate(comment, marker.get(), aliasName));
                 duplicates.put(marker.get().getName(), markerDuplicateList);
             } else {
-                duplicates.get(marker.get().getName()).add(new MarkerDuplicate(comment, marker.get(), marker.get().getName()));
+                duplicates.get(marker.get().getName()).add(new MarkerDuplicate(comment, marker.get(), aliasName));
             }
         });
 
@@ -609,7 +610,7 @@ public class MarkerCommentHighlighter {
             if (markerDuplicates.size() > 1 && !markerDuplicates.get(0).getMarker().isRepeatable()) {
                 markerDuplicates.forEach(markerDuplicate -> {
                     Comment.Line firstLine = markerDuplicate.getComment().firstLine().get();
-                    int startIndex = firstLine.startOffset() + firstLine.getText().indexOf("+" + markerDuplicate.getMarker());
+                    int startIndex = firstLine.startOffset() + firstLine.getText().indexOf("+" + markerDuplicate.getMarkerName());
                     int endIndex = startIndex + markerDuplicate.getMarkerName().length() + 1;
                     highlightDuplicateMarker(new Element("+" + markerDuplicate.getMarkerName(), new TextRange(startIndex, endIndex)), commentElement.getTextRange(), holder);
                 });
@@ -630,7 +631,15 @@ public class MarkerCommentHighlighter {
 
                         String[] parts = Utils.unquote(pkg.get().getText()).trim().split("@", 2);
                         String pkgName = parts[0].trim();
-                        String pkgVersion = parts[1].trim();
+
+                        String pkgVersion = "latest";
+                        if (parts.length == 2) {
+                            pkgVersion = parts[1].trim();
+                        }
+
+                        if (pkgName.isEmpty()) {
+                            return;
+                        }
 
                         if (!packageProblems.containsKey(pkgName)) {
                             Map<String, List<MarkerProblem>> versionMap = new HashMap<>();
@@ -647,7 +656,7 @@ public class MarkerCommentHighlighter {
 
                         Optional<Element> processor = markerElement.getParameterValue("Value");
 
-                        if (processor.isEmpty() || StringUtils.isEmpty(processor.get().getText())) {
+                        if (processor.isEmpty() || StringUtils.isEmpty(Utils.unquote(processor.get().getText()))) {
                             return;
                         }
 
@@ -657,7 +666,7 @@ public class MarkerCommentHighlighter {
                             List<MarkerProblem> markerProblems = new ArrayList<>();
                             markerProblems.add(new MarkerProblem(processor.get(), processorName));
                             processorProblems.put(processorKey, markerProblems);
-                        } {
+                        } else {
                             processorProblems.get(processorKey).add(new MarkerProblem(processor.get(), processorName));
                         }
                     }
@@ -697,7 +706,7 @@ public class MarkerCommentHighlighter {
 
         final List<Comment> comments = new ArrayList<>();
         while ((current = current.getPrevSibling()) != null) {
-            if (Utils.isMarkerCommentElement(element)) {
+            if (Utils.isMarkerCommentElement(current)) {
                 Optional<Comment> comment = Utils.getMarkerComment(current);
                 comment.ifPresent(comments::add);
             } else if (!(current instanceof PsiWhiteSpace) && !(current instanceof PsiComment)) {

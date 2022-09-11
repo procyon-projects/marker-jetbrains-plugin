@@ -113,9 +113,9 @@ public class ImportParser {
                     myLexer.advance();
                     continue;
                 }
-
-                this.myLexer.advance();
             }
+
+            this.myLexer.advance();
         }
 
         return importMarkers;
@@ -204,13 +204,8 @@ public class ImportParser {
             previous = current;
             previousText = currentText;
             myLexer.advance();
-            try
-            {
-                current = myLexer.getTokenType();
-                currentText = myLexer.getTokenText();
-            } catch (Exception e) {
-
-            }
+            current = myLexer.getTokenType();
+            currentText = myLexer.getTokenText();
         }
 
         if (commentIndex > 1) {

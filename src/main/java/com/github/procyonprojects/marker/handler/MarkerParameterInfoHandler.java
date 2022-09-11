@@ -140,7 +140,7 @@ public class MarkerParameterInfoHandler implements ParameterInfoHandler<PsiComme
         htmlBuilder.append(parameter.getSchema().getPresentableText());
         htmlBuilder.append(" ").append("<b>").append(parameter.getName()).append("</b>");
 
-        if (parameter.getDefaultValue() != null) {
+        if (StringUtils.isNotEmpty(parameter.getDefaultValue())) {
             htmlBuilder.append(" default ").append(parameter.getDefaultValue());
         }
 

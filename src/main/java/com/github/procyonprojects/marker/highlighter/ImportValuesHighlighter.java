@@ -29,6 +29,15 @@ public class ImportValuesHighlighter {
 
     private static final MetadataProvider METADATA_PROVIDER = ApplicationManager.getApplication().getService(MetadataProvider.class);
 
+    private void highlightEmpty(Element element, TextRange containerTextRange, @NotNull AnnotationHolder holder, String message) {
+        if (containerTextRange.contains(element.getRange())) {
+            holder.newAnnotation(HighlightSeverity.ERROR, message)
+                    .range(element.getRange())
+                    .highlightType(ProblemHighlightType.LIKE_UNKNOWN_SYMBOL)
+                    .create();
+        }
+    }
+
     private void highlightUnresolvedPackage(String pkg, Element element, TextRange containerTextRange, @NotNull AnnotationHolder holder) {
         if (containerTextRange.contains(element.getRange())) {
             holder.newAnnotation(HighlightSeverity.ERROR, "Unresolved package")
@@ -71,9 +80,15 @@ public class ImportValuesHighlighter {
         final Optional<Element> pkg = markerElement.getParameterValue("Pkg");
         boolean packageExists;
         if (pkg.isPresent()) {
-            packageExists = METADATA_PROVIDER.packageExists(element.getProject(), Utils.unquote(pkg.get().getText()).trim());
-            if (!packageExists) {
-                highlightUnresolvedPackage(Utils.unquote(pkg.get().getText()).trim(), pkg.get(), element.getTextRange(), holder);
+            String pkgName = Utils.unquote(pkg.get().getText()).trim();
+            if (pkgName.isEmpty()) {
+                highlightEmpty(pkg.get(), element.getTextRange(), holder, "'Pkg' cannot be empty");
+                packageExists = false;
+            } else {
+                packageExists = METADATA_PROVIDER.packageExists(element.getProject(), pkgName);
+                if (!packageExists) {
+                    highlightUnresolvedPackage(pkgName, pkg.get(), element.getTextRange(), holder);
+                }
             }
         } else {
             packageExists = false;
@@ -81,7 +96,12 @@ public class ImportValuesHighlighter {
 
         final Optional<Element> processor = markerElement.getParameterValue("Value");
         if (!packageExists && processor.isPresent()) {
-            highlightUnresolvedProcessor(processor.get(), element.getTextRange(), holder);
+            String processorName = Utils.unquote(processor.get().getText()).trim();
+            if (processorName.isEmpty()) {
+                highlightEmpty(processor.get(), element.getTextRange(), holder, "'Value' cannot be empty");
+            } else {
+                highlightUnresolvedProcessor(processor.get(), element.getTextRange(), holder);
+            }
         } else if(packageExists && StringUtils.isNotEmpty(processor.get().getText())
                 && !METADATA_PROVIDER.processorExists(element.getProject(), Utils.unquote(pkg.get().getText()).trim(), Utils.unquote(processor.get().getText()).trim())) {
             highlightUnresolvedProcessor(processor.get(), element.getTextRange(), holder);

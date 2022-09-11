@@ -40,7 +40,7 @@ public class MarkerRootsProvider extends AdditionalLibraryRootsProvider {
         if (module.isPresent()) {
             VirtualFile firstGoPath = ContainerUtil.getFirstItem(GoSdkUtil.getGoPathRoots(project, module.get()));
             if (firstGoPath != null) {
-                File file = new File(VfsUtilCore.virtualToIoFile(firstGoPath), "marker");
+                File file = new File(VfsUtilCore.virtualToIoFile(firstGoPath), "marker/pkg");
                 VirtualFile vgo = VfsUtil.findFileByIoFile(file, false);
                 if (vgo != null) {
                     libraries.add(vgo);

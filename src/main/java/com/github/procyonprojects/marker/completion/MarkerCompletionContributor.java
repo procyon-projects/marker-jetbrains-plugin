@@ -1,7 +1,5 @@
 package com.github.procyonprojects.marker.completion;
 
-import b.h.S;
-import b.h.T;
 import com.github.procyonprojects.marker.Icons;
 import com.github.procyonprojects.marker.TargetInfo;
 import com.github.procyonprojects.marker.Utils;
@@ -124,7 +122,7 @@ public class MarkerCompletionContributor extends CompletionContributor {
                     markerName = markerName.replace(processorName, alias);
                 }
 
-                if (!markerName.startsWith(lookupMarkerName)) {
+                if (!markerName.startsWith(lookupMarkerName) || markerName.equals(lookupMarkerName)) {
                     continue;
                 }
 
@@ -191,10 +189,10 @@ public class MarkerCompletionContributor extends CompletionContributor {
                 String finalMarkerName = markerName;
                 if (!lookupMarkerName.endsWith(":")) {
 
-                    if (markerName.startsWith(lookupMarkerName) || markerName.equals(lookupMarkerName)) {
+                    if (markerName.startsWith(lookupMarkerName)) {
                         String prefix = markerName;
                         if (prefix.lastIndexOf(":") != -1) {
-                            prefix = prefix.substring(prefix.lastIndexOf(":" + 1));
+                            prefix = prefix.substring(prefix.lastIndexOf(":") + 1);
                         }
 
                         String finalPrefix = prefix;
@@ -268,7 +266,7 @@ public class MarkerCompletionContributor extends CompletionContributor {
             }
             aliasMarkerName = markerName;
         } else {
-            aliasMarkerName = markerName;
+            aliasMarkerName = anonymousName;
         }
 
 
@@ -327,8 +325,9 @@ public class MarkerCompletionContributor extends CompletionContributor {
                                         current = current.getNext();
                                         continue;
                                     }
+                                } else if (!(valueElement instanceof StringElement)) {
+                                    elements.addAll(fillParameterValues(parameterElement.getTypeInfo(), parameterElement.getParameter(), parameters, resultSet));
                                 }
-                                elements.addAll(fillParameterValues(parameterElement.getTypeInfo(), parameterElement.getParameter(), parameters, resultSet));
                             }
                         } else if (valueElement instanceof MapElement || typeInfo.getActualType() == Type.MapType) {
                             final MapElement mapElement = (MapElement) valueElement;
@@ -381,7 +380,7 @@ public class MarkerCompletionContributor extends CompletionContributor {
 
     private LookupElementBuilder getParameter(String lookupString, String presentableText, Parameter parameter) {
         final StringBuilder tailTextBuilder = new StringBuilder();
-        tailTextBuilder.append(" ").append(parameter.getDescription());
+        tailTextBuilder.append(" ").append(StringUtils.isNotEmpty(parameter.getDescription()) ? parameter.getDescription() : "");
 
         if (parameter.getDefaultValue() != null) {
             tailTextBuilder.append(" ").append("default").append(" ").append(parameter.getDefaultValue());
